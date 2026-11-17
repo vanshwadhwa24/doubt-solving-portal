@@ -3,6 +3,8 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth.jsx';
 import { Login } from './pages/Login.jsx';
 import { Shell } from './components/Shell.jsx';
+import { StudentHome } from './pages/StudentHome.jsx';
+import { DoubtThread } from './pages/DoubtThread.jsx';
 
 function Placeholder({ title }) {
   return <div className="loading-line">{title}</div>;
@@ -21,7 +23,8 @@ function Protected() {
     <Shell>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/my" element={<Placeholder title="Student home loads in the next commit" />} />
+        <Route path="/my" element={<StudentHome />} />
+        <Route path="/doubt/:id" element={<DoubtThread />} />
         <Route path="/inbox" element={<Placeholder title="Educator inbox loads in the next commit" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
