@@ -18,6 +18,8 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     await api.logout();
     setUser(null);
+    // Leave any deep route (e.g. a doubt thread) so the next login starts at home.
+    window.location.hash = '#/';
   };
 
   return <AuthCtx.Provider value={{ user, loading, login, logout }}>{children}</AuthCtx.Provider>;
