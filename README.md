@@ -70,6 +70,14 @@ npm test
 
 Runs the API suite (13 tests) against a separate `doubt_portal_test` database (created from the same migrations; set `DATABASE_URL` to override).
 
+## E2E smoke test
+
+`scripts/e2e-smoke.py` drives a real browser through the whole loop (student submits a doubt with an image, educator searches/answers/sets status, student reads the answer) with assertions at each step. Requires Python + Playwright and a seeded app on :4000:
+
+```bash
+python3 scripts/e2e-smoke.py
+```
+
 ## Demo video
 
 `demo/demo.mp4` walks the full loop end to end: student login, asking a doubt with a screenshot, educator inbox triage (filters, search), answering, status changes, and the student reading the answer on a phone-width view. It is a silent screen recording at a deliberate pace - no voiceover.
