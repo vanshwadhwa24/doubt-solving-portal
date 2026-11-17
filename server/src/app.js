@@ -2,6 +2,9 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import { attachUser } from './middleware/auth.js';
 import { authRouter } from './routes/auth.js';
+import { coursesRouter } from './routes/courses.js';
+import { doubtsRouter } from './routes/doubts.js';
+import { attachmentsRouter } from './routes/attachments.js';
 
 export function createApp() {
   const app = express();
@@ -14,6 +17,9 @@ export function createApp() {
   });
 
   app.use('/api/auth', authRouter);
+  app.use('/api/courses', coursesRouter);
+  app.use('/api/doubts', doubtsRouter);
+  app.use('/api/attachments', attachmentsRouter);
 
   // JSON error handler - no stack traces leak to clients.
   // eslint-disable-next-line no-unused-vars
