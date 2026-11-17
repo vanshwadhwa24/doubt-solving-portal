@@ -80,6 +80,12 @@ python3 scripts/e2e-smoke.py
 
 ## Demo video
 
+`demo/demo.mp4` (about 5 minutes, silent screen recording at a deliberate pace, no voiceover):
+1. Desktop - student logs in, asks a doubt in MATH101 with a screenshot of their notes
+2. Desktop - educator triages the inbox (summary counts, Open filter, search), answers, marks the doubt resolved
+3. Phone-width view - the student reads the answer on mobile
+4. Appendix - a rapid double-click on Submit still creates exactly one doubt (idempotent submission)
+
 `demo/demo.mp4` walks the full loop end to end: student login, asking a doubt with a screenshot, educator inbox triage (filters, search), answering, status changes, and the student reading the answer on a phone-width view. It is a silent screen recording at a deliberate pace - no voiceover.
 
 ## Configuration
