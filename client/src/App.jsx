@@ -5,10 +5,7 @@ import { Login } from './pages/Login.jsx';
 import { Shell } from './components/Shell.jsx';
 import { StudentHome } from './pages/StudentHome.jsx';
 import { DoubtThread } from './pages/DoubtThread.jsx';
-
-function Placeholder({ title }) {
-  return <div className="loading-line">{title}</div>;
-}
+import { EducatorInbox } from './pages/EducatorInbox.jsx';
 
 function Home() {
   const { user } = useAuth();
@@ -25,7 +22,7 @@ function Protected() {
         <Route path="/" element={<Home />} />
         <Route path="/my" element={<StudentHome />} />
         <Route path="/doubt/:id" element={<DoubtThread />} />
-        <Route path="/inbox" element={<Placeholder title="Educator inbox loads in the next commit" />} />
+        <Route path="/inbox" element={<EducatorInbox />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>
