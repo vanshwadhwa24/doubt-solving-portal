@@ -1,0 +1,154 @@
+openapi: 3.0.3
+info:
+  title: DoubtDesk API
+  version: 1.0.0
+  description: REST API for the DoubtDesk doubt-solving portal.
+servers:
+  - url: /api
+paths:
+  /auth/login:
+    post:
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: {type: string}
+                password: {type: string}
+      responses:
+        '200':
+          description: Logged in; session cookie set
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+        '401': {description: Invalid credentials}
+  /auth/logout:
+    post:
+      summary: Log out
+      responses:
+        '200': {description: Session ended}
+  /auth/me:
+    get:
+      summary: Current user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+        '401': {description: Not logged in}
+  /courses:
+    get:
+      summary: List courses
+      responses:
+        '200':
+          description: Courses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  courses:
+                    type: array
+                    items: {$ref: '#/components/schemas/Course'}
+  /doubts:
+    post:
+      summary: Create a doubt (student)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [course_id, description]
+              properties:
+                course_id: {type: string}
+                title: {type: string}
+                description: {type: string}
+                client_token: {type: string, description: Idempotency key}
+                image: {type: string, format: binary}
+      responses:
+        '201': {description: Created}
+        '200': {description: Already existed for this client_token}
+    get:
+      summary: List doubts (own for students, all for educators)
+      parameters:
+        - {name: course_id, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string, enum: [open, in_progress, answered, resolved]}}
+        - {name: q, in: query, schema: {type: string}}
+      responses:
+        '200': {description: Matching doubts}
+  /doubts/summary:
+    get:
+      summary: Educator inbox counts
+      responses:
+        '200': {description: Counts by status}
+        '403': {description: Educators only}
+  /doubts/{id}:
+    get:
+      summary: Full doubt thread
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Doubt with messages and attachments}
+        '404': {description: Not found or not visible to you}
+  /doubts/{id}/messages:
+    post:
+      summary: Reply in a doubt thread
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: {type: string}
+                image: {type: string, format: binary}
+      responses:
+        '201': {description: Message added}
+  /doubts/{id}/messages/status:
+    patch:
+      summary: Change doubt status (educator)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: {type: string, enum: [open, in_progress, answered, resolved]}
+      responses:
+        '200': {description: Updated doubt}
+  /attachments/{id}/file:
+    get:
+      summary: Stream an attachment image
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Image bytes}
+        '404': {description: Not found or not visible to you}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        email: {type: string}
+        role: {type: string, enum: [student, educator]}
+    Course:
+      type: object
+      properties:
+        id: {type: string}
+        code: {type: string}
+        name: {type: string}

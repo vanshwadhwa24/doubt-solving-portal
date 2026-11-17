@@ -1,0 +1,40 @@
+# API reference
+
+Base URL: `/api`. Auth is a session cookie (`dd_session`, httpOnly) issued by login. All errors are JSON: `{ "error": "message" }` with a fitting status code (400 validation, 401 unauthenticated, 403 wrong role/owner, 404 missing).
+
+## Auth
+
+| Method | Path           | Role | Description |
+| ------ | -------------- | ---- | ----------- |
+| POST   | `/auth/login`  | any  | Body `{email, password}`. Sets the session cookie, returns the user. |
+| POST   | `/auth/logout` | any  | Ends the session. |
+| GET    | `/auth/me`     | any  | Current user `{id, name, email, role}`. |
+
+## Courses
+
+| Method | Path       | Role | Description |
+| ------ | ---------- | ---- | ----------- |
+| GET    | `/courses` | any  | List all courses `{courses: [{id, code, name}]}`. |
+
+## Doubts
+
+| Method | Path                | Role     | Description |
+| ------ | ------------------- | -------- | ----------- |
+| POST   | `/doubts`           | student  | Multipart form: `course_id`, `description` (required), `title`, `client_token`, `image` (optional). Creates the doubt (201). A repeated `client_token` returns the original with `deduplicated: true` (200). |
+| GET    | `/doubts`           | any      | Students: their own doubts. Educators: all doubts; query filters `course_id`, `status` (`open\|in_progress\|answered\|resolved`), `q` (searches question, replies, student name). |
+| GET    | `/doubts/summary`   | educator | Counts `{open, in_progress, answered, resolved, unanswered}`. |
+| GET    | `/doubts/:id`       | owner/educator | `{doubt, messages, attachments}` - full conversation. |
+| POST   | `/doubts/:id/messages` | owner/educator | Multipart: `body`, optional `image`. Adds a reply. Educator replies mark the doubt `answered`; a student follow-up on `answered`/`resolved` reopens it to `in_progress`. |
+| PATCH  | `/doubts/:id/messages/status` | educator | Body `{status}`. Moves the doubt through its lifecycle. |
+
+## Attachments
+
+| Method | Path                    | Role           | Description |
+| ------ | ----------------------- | -------------- | ----------- |
+| GET    | `/attachments/:id/file` | owner/educator | Streams the uploaded image with its stored MIME type. |
+
+## Conventions
+
+- IDs are bigints and serialize as strings in JSON.
+- Timestamps are ISO-8601 with timezone.
+- Images: PNG/JPEG/WebP/GIF, max 5 MB.
