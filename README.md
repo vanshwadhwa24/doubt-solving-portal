@@ -17,6 +17,9 @@ A centralized portal where students submit academic doubts and educators manage 
 - Open a doubt to see the complete conversation history
 - Reply in the thread; update statuses (Open, In Progress, Answered, Resolved)
 
+**Telegram bridge (optional, bonus)**
+- With a bot token set, students can send doubts to a Telegram bot; they appear in the educator inbox and educator answers are pushed back to the chat
+
 **Engineering**
 - Session-cookie auth with scrypt-hashed passwords and student/educator role-based access control
 - Idempotent doubt creation (client-generated token; retries never duplicate)
@@ -65,7 +68,11 @@ npm run dev        # server on :4000, Vite dev server on :5173 (proxied)
 npm test
 ```
 
-Runs the API suite against a separate `doubt_portal_test` database (created from the same migrations; set `DATABASE_URL` to override).
+Runs the API suite (13 tests) against a separate `doubt_portal_test` database (created from the same migrations; set `DATABASE_URL` to override).
+
+## Demo video
+
+`demo/demo.mp4` walks the full loop end to end: student login, asking a doubt with a screenshot, educator inbox triage (filters, search), answering, status changes, and the student reading the answer on a phone-width view. It is a silent screen recording at a deliberate pace - no voiceover.
 
 ## Configuration
 
@@ -76,6 +83,9 @@ Runs the API suite against a separate `doubt_portal_test` database (created from
 | `SESSION_TTL_HOURS`| `72`                                               | Session lifetime           |
 | `MAX_UPLOAD_BYTES` | `5242880`                                          | Image upload cap (5 MB)    |
 | `UPLOAD_DIR`       | `server/uploads`                                   | Attachment storage         |
+| `TELEGRAM_BOT_TOKEN` | _(unset)_                                        | Enables the Telegram bridge when set |
+| `TELEGRAM_STUDENT_EMAIL` | _(first student)_                            | Student identity for Telegram-origin doubts |
+| `TELEGRAM_DEFAULT_COURSE` | _(first course)_                            | Course code for Telegram-origin doubts |
 
 ## Documentation
 

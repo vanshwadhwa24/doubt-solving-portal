@@ -14,6 +14,13 @@
 - **ILIKE search.** Good enough at MVP scale; Postgres full-text search (`tsvector`) would be the next step for large inboxes.
 - **Hash-based client routing** so the Express static server needs no SPA rewrite rules.
 
+## Telegram bridge (bonus)
+
+- Opt-in: no token, no bot - the core app never touches the network.
+- **MVP mapping:** incoming Telegram messages are posted under one configured student identity and one default course. A real deployment would bind Telegram accounts to student accounts (a link code flow).
+- Text-only intake; photo messages are ignored. Educator answers are pushed back as text.
+- Updates are deduplicated in `telegram_updates` so a bot restart never double-posts a doubt.
+
 ## Known limitations
 
 - No rate limiting or CAPTCHA on login (would be required before a public deployment).
