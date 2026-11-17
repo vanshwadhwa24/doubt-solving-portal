@@ -64,8 +64,8 @@ async function seed() {
       'resolved',
       [
         [educator, 'Choose u = x^2 and dv = e^x dx. Then apply integration by parts twice - each round reduces the power of x by one until you reach a plain e^x integral.'],
-        [aarav, 'Got it, the second application brings back the original integral on both sides and I can solve for it. Thanks!'],
-        [educator, 'Exactly. Marking this resolved - try the same trick on x^2 * sin(x) for practice.'],
+        [aarav, 'Got it - after the second round the x term is gone and only a plain e^x integral is left, so e^x(x^2 - 2x + 2) + C. Thanks!'],
+        [educator, 'That is correct - differentiating e^x(x^2 - 2x + 2) gives back x^2 e^x. Marking this resolved - try x^2 * sin(x) the same way for practice.'],
       ], 30);
 
     await doubt(sara, courseId['CS301'],
