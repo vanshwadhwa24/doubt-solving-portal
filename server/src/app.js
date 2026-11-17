@@ -1,5 +1,8 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import { config } from './config.js';
 import { attachUser } from './middleware/auth.js';
 import { authRouter } from './routes/auth.js';
 import { coursesRouter } from './routes/courses.js';
@@ -22,6 +25,14 @@ export function createApp() {
   app.use('/api/doubts', doubtsRouter);
   app.use('/api/attachments', attachmentsRouter);
   app.use('/api/doubts/:doubtId/messages', messagesRouter);
+
+  // Serve the built client (production mode: npm run build && npm start).
+  if (fs.existsSync(config.clientDist)) {
+    app.use(express.static(config.clientDist));
+    app.get(/^(?!\/api).*/, (req, res) => {
+      res.sendFile(path.join(config.clientDist, 'index.html'));
+    });
+  }
 
   // JSON error handler - no stack traces leak to clients.
   // eslint-disable-next-line no-unused-vars

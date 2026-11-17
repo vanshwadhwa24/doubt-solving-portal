@@ -66,7 +66,7 @@ function NewDoubt({ courses, onCreated }) {
       <div className="reply-actions">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button type="button" className="attach-btn" onClick={() => fileRef.current?.click()}>
-            📎 Attach screenshot
+            Attach a screenshot
           </button>
           {image && <span className="attach-name">{image.name}</span>}
           <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden

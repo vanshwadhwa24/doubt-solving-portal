@@ -100,7 +100,7 @@ export function DoubtThread() {
           placeholder={isEducator ? 'Write your answer…' : 'Add a follow-up…'} />
         <div className="reply-actions">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button type="button" className="attach-btn" onClick={() => fileRef.current?.click()}>📎 Image</button>
+            <button type="button" className="attach-btn" onClick={() => fileRef.current?.click()}>Attach an image</button>
             {image && <span className="attach-name">{image.name}</span>}
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden
               onChange={(e) => setImage(e.target.files?.[0] || null)} />
