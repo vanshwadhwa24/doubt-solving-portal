@@ -1,0 +1,7 @@
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #1d1a16;
+  background: #faf7f2;
+}
+body { margin: 0; }
+.boot-screen { padding: 4rem; }

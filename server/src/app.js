@@ -1,0 +1,14 @@
+import express from 'express';
+import cookieParser from 'cookie-parser';
+
+export function createApp() {
+  const app = express();
+  app.use(express.json());
+  app.use(cookieParser());
+
+  app.get('/api/health', (req, res) => {
+    res.json({ ok: true, service: 'doubt-solving-portal' });
+  });
+
+  return app;
+}
