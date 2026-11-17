@@ -5,6 +5,7 @@ import { authRouter } from './routes/auth.js';
 import { coursesRouter } from './routes/courses.js';
 import { doubtsRouter } from './routes/doubts.js';
 import { attachmentsRouter } from './routes/attachments.js';
+import { messagesRouter } from './routes/messages.js';
 
 export function createApp() {
   const app = express();
@@ -20,6 +21,7 @@ export function createApp() {
   app.use('/api/courses', coursesRouter);
   app.use('/api/doubts', doubtsRouter);
   app.use('/api/attachments', attachmentsRouter);
+  app.use('/api/doubts/:doubtId/messages', messagesRouter);
 
   // JSON error handler - no stack traces leak to clients.
   // eslint-disable-next-line no-unused-vars
