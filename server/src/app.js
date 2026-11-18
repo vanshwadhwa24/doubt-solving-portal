@@ -9,6 +9,7 @@ import { coursesRouter } from './routes/courses.js';
 import { doubtsRouter } from './routes/doubts.js';
 import { attachmentsRouter } from './routes/attachments.js';
 import { messagesRouter } from './routes/messages.js';
+import { telegramRouter } from './routes/telegram.js';
 
 export function createApp() {
   const app = express();
@@ -24,6 +25,7 @@ export function createApp() {
   app.use('/api/courses', coursesRouter);
   app.use('/api/doubts', doubtsRouter);
   app.use('/api/attachments', attachmentsRouter);
+  app.use('/api/telegram', telegramRouter);
   app.use('/api/doubts/:doubtId/messages', messagesRouter);
 
   // Serve the built client (production mode: npm run build && npm start).

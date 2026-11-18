@@ -8,7 +8,7 @@ const DEMO_PASSWORDS = { educator: 'educator123', student: 'student123' };
 async function seed() {
   await withTransaction(async (client) => {
     await client.query(
-      'TRUNCATE attachments, messages, doubts, sessions, telegram_updates, users, courses RESTART IDENTITY CASCADE',
+      'TRUNCATE attachments, messages, doubts, sessions, telegram_updates, telegram_link_codes, users, courses RESTART IDENTITY CASCADE',
     );
 
     const courses = await client.query(

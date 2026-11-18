@@ -9,6 +9,6 @@ export const config = {
   maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES || 5 * 1024 * 1024),
   clientDist: process.env.CLIENT_DIST || new URL('../../client/dist', import.meta.url).pathname,
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
-  telegramStudentEmail: process.env.TELEGRAM_STUDENT_EMAIL || '',
+  telegramApiBase: process.env.TELEGRAM_API_BASE || 'https://api.telegram.org',
   telegramDefaultCourse: process.env.TELEGRAM_DEFAULT_COURSE || '',
 };

@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { pool, withTransaction } from '../db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { imageUpload } from '../uploads.js';
+import path from 'node:path';
 import { notifyEducatorReply } from '../telegram.js';
+import { config } from '../config.js';
 
 export const messagesRouter = Router({ mergeParams: true });
 
@@ -62,7 +64,8 @@ messagesRouter.post('/', requireAuth, imageUpload.single('image'), async (req, r
     res.status(201).json(result);
     if (req.user.role === 'educator') {
       // Telegram-origin doubts get the answer pushed back to the chat (best effort).
-      notifyEducatorReply({ doubtId: doubt.id, educatorName: req.user.name, body }).catch((err) =>
+      notifyEducatorReply({ doubtId: doubt.id, educatorName: req.user.name, body: body || '(image)',
+        imagePath: req.file ? path.join(config.uploadDir, req.file.filename) : undefined }).catch((err) =>
         console.error('telegram notify failed:', err.message),
       );
     }
