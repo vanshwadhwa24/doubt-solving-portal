@@ -123,7 +123,11 @@ doubtsRouter.get('/', requireAuth, async (req, res, next) => {
           OR EXISTS (SELECT 1 FROM messages m WHERE m.doubt_id = d.id AND m.body ILIKE ${p}))`);
       }
     }
-    const sql = `${LIST_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+    const studentOrder = `ORDER BY (d.status <> 'resolved' AND COALESCE(lm.last_sender_role = 'educator', false)) DESC,
+                          d.updated_at DESC LIMIT 200`;
+    const sql = req.user.role === 'student'
+      ? `${LIST_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ${studentOrder}`
+      : `${LIST_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
                  ORDER BY (d.status <> 'resolved' AND lm.last_sender_role IS DISTINCT FROM 'educator') DESC,
                           CASE WHEN d.status <> 'resolved' AND lm.last_sender_role IS DISTINCT FROM 'educator'
                                THEN CASE WHEN le.t IS NULL THEN d.created_at
