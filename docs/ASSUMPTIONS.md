@@ -46,6 +46,21 @@
 - Thread refreshes every 10s and the student home every 20s by polling (no websockets); polling does not pause for hidden tabs.
 - Code fences render as code blocks in threads and show as "[code]" in list excerpts.
 
+## Behaviour at volume
+
+Probe: 20,000 doubts with 20,000 messages (`scripts/scale/seed-20k.mjs`, then call the API as an educator), local Postgres on one machine, single request each:
+
+| Educator request | Time |
+| --- | --- |
+| Needs-reply list (200 rows returned) | 0.14 s |
+| Status filter | 0.07 s |
+| Course + status filter | 0.07 s |
+| Search "recursion" (matches all 20,000, ILIKE) | 0.22 s |
+| Search for a rare term | 0.03 s |
+| Summary counts | 0.12 s |
+
+Lists return at most 200 rows and the inbox says "Showing the first 200 of N" when more match, so nothing disappears silently. Not measured: concurrent users, network latency, a hosted database. Next steps if volume grows: cursor pagination, GIN/trigram index for search, cached summary counts, object storage for images, and a webhook worker queue for Telegram.
+
 ## Known limitations
 
 - Visual language (cream, black borders, hard shadows, lilac/lime) is adapted from a reference clip supplied by the product owner; system fonts only, no new dependencies.

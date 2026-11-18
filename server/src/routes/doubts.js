@@ -135,7 +135,13 @@ doubtsRouter.get('/', requireAuth, async (req, res, next) => {
                           END ASC,
                           d.updated_at DESC LIMIT 200`;
     const { rows } = await pool.query(sql, params);
-    res.json({ doubts: rows });
+    // Lists are capped at 200 rows; say so when more match, so nothing silently disappears.
+    let total = rows.length;
+    if (rows.length === 200) {
+      const countSql = `SELECT count(*) FROM (${LIST_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''}) x`;
+      total = Number((await pool.query(countSql, params)).rows[0].count);
+    }
+    res.json({ doubts: rows, total });
   } catch (err) {
     next(err);
   }

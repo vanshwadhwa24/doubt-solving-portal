@@ -40,6 +40,7 @@ export function EducatorInbox() {
   const [courses, setCourses] = useState([]);
   const [error, setError] = useState('');
   const [moved, setMoved] = useState(null);
+  const [total, setTotal] = useState(0);
 
   const refresh = useCallback(async () => {
     const f = { course_id: courseId, q: search };
@@ -47,6 +48,7 @@ export function EducatorInbox() {
     const [s, d] = await Promise.all([api.summary(), api.inbox(f)]);
     setSummary(s);
     setDoubts(d.doubts);
+    setTotal(d.total ?? d.doubts.length);
     setError('');
   }, [tab, courseId, search]);
 
@@ -135,6 +137,9 @@ export function EducatorInbox() {
           </Empty>
         ) : (
           <div className="doubt-list">
+            {total > doubts.length && (
+              <div className="form-note">Showing the first {doubts.length} of {total}. Use the course filter or search to narrow the list.</div>
+            )}
             {doubts.map((d) => (
               <div key={d.id} className="card doubt-card">
                 <Link to={`/doubt/${d.id}`} className="doubt-row">
