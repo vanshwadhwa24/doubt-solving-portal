@@ -30,6 +30,8 @@ export const api = {
   doubt: (id) => call(`/api/doubts/${id}`),
   createDoubt: (form) => call('/api/doubts', { method: 'POST', form }),
   reply: (doubtId, form) => call(`/api/doubts/${doubtId}/messages`, { method: 'POST', form }),
+  telegramStatus: () => call('/api/telegram/status'),
+  telegramLinkCode: () => call('/api/telegram/link-code', { method: 'POST' }),
   setStatus: (doubtId, status) => call(`/api/doubts/${doubtId}/messages/status`, { method: 'PATCH', body: { status } }),
 };
 

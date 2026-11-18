@@ -88,6 +88,32 @@ function NewDoubt({ courses, onCreated }) {
   );
 }
 
+function ConnectTelegram() {
+  const [status, setStatus] = useState(null);
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => { api.telegramStatus().then(setStatus).catch(() => setStatus(null)); }, []);
+  if (!status?.enabled) return null;
+  async function connect() {
+    setError('');
+    try { setCode((await api.telegramLinkCode()).code); } catch (e) { setError(e.message); }
+  }
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 22 }}>
+      <strong>Telegram</strong>{' '}
+      {status.linked && !code ? <span>is connected. Messages you send the bot become doubts here.</span> : null}
+      {code ? (
+        <p style={{ margin: '8px 0 0' }}>Send this to the bot within 15 minutes: <code>/start {code}</code></p>
+      ) : (
+        <button className="btn btn-small" style={{ marginLeft: 10 }} onClick={connect}>
+          {status.linked ? 'Reconnect' : 'Connect Telegram'}
+        </button>
+      )}
+      {error && <div className="form-error">{error}</div>}
+    </div>
+  );
+}
+
 export function DoubtCard({ d, role }) {
   return (
     <Link to={`/doubt/${d.id}`} className={`card doubt-row${role === 'student' && d.needs_student ? ' doubt-row-you' : ''}`}>
@@ -139,6 +165,7 @@ export function StudentHome() {
           </p>
         </div>
       </div>
+      <ConnectTelegram />
       <NewDoubt courses={courses} onCreated={(id) => navigate(`/doubt/${id}?sent=1`)} />
       {error && <div className="form-error">{error}</div>}
       {doubts === null ? <div className="loading-line">Loading your doubts…</div> :
