@@ -72,11 +72,15 @@ messagesRouter.post('/', requireAuth, imageUpload.single('image'), async (req, r
 });
 
 // Educator moves a doubt through its lifecycle.
-messagesRouter.patch('/status', requireRole('educator'), async (req, res, next) => {
+// Educators set any status. A student may only close (resolve) their own doubt.
+messagesRouter.patch('/status', requireAuth, async (req, res, next) => {
   try {
     const doubt = await loadDoubtForAccess(req, res);
     if (!doubt) return;
     const { status } = req.body || {};
+    if (req.user.role === 'student' && status !== 'resolved') {
+      return res.status(403).json({ error: 'students can only mark their own doubt resolved' });
+    }
     if (!VALID_STATUS.includes(status)) {
       return res.status(400).json({ error: `status must be one of: ${VALID_STATUS.join(', ')}` });
     }

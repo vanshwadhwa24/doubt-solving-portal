@@ -40,6 +40,44 @@ export function AttachmentImages({ attachments, messageId = undefined }) {
   );
 }
 
+// Message text with ``` fenced code shown as a code block. Plain React text, no HTML injection.
+export function RichText({ text }) {
+  const parts = String(text).split(/```(?:[a-zA-Z0-9+#-]*\n)?/);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const code = i % 2 === 1;
+        const body = code ? part.replace(/\n$/, '') : part.trim();
+        if (!body) return null;
+        return code ? <pre key={i} className="code-block"><code>{body}</code></pre> : <span key={i} className="prose-part">{body}</span>;
+      })}
+    </>
+  );
+}
+
+// Whose turn it is, from the viewer's side.
+export function TurnBadge({ doubt, role }) {
+  if (doubt.status === 'resolved') return null;
+  if (role === 'educator') {
+    if (doubt.needs_educator) {
+      const follow = doubt.has_educator_reply;
+      return <span className="turn turn-you">{follow ? 'Student replied' : 'New'} · waiting {waitLabel(doubt.waiting_since)}</span>;
+    }
+    return <span className="turn turn-them">Waiting for student</span>;
+  }
+  if (doubt.needs_student) return <span className="turn turn-you">Educator replied · your turn</span>;
+  return <span className="turn turn-them">Waiting for your educator</span>;
+}
+
+export function waitLabel(iso) {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} h`;
+  return `${Math.floor(hours / 24)} d`;
+}
+
 export function Empty({ title, children }) {
   return (
     <div className="empty card">

@@ -13,10 +13,38 @@ const LIST_SELECT = `
          EXISTS (
            SELECT 1 FROM messages m JOIN users su ON su.id = m.sender_id
            WHERE m.doubt_id = d.id AND su.role = 'educator'
-         ) AS has_educator_reply
+         ) AS has_educator_reply,
+         lm.last_sender_role,
+         lm.last_message_at,
+         -- Whose turn it is: derived from the last message, never stored.
+         (d.status <> 'resolved' AND lm.last_sender_role IS DISTINCT FROM 'educator') AS needs_educator,
+         (d.status <> 'resolved' AND COALESCE(lm.last_sender_role = 'educator', false)) AS needs_student,
+         CASE WHEN le.t IS NULL THEN d.created_at
+              ELSE COALESCE((SELECT min(m.created_at) FROM messages m
+                              WHERE m.doubt_id = d.id AND m.created_at > le.t), d.created_at)
+         END AS waiting_since
     FROM doubts d
+    LEFT JOIN LATERAL (
+      SELECT su.role AS last_sender_role, m.created_at AS last_message_at
+        FROM messages m LEFT JOIN users su ON su.id = m.sender_id
+       WHERE m.doubt_id = d.id ORDER BY m.created_at DESC, m.id DESC LIMIT 1
+    ) lm ON true
+    LEFT JOIN LATERAL (
+      SELECT max(m.created_at) AS t FROM messages m JOIN users eu ON eu.id = m.sender_id
+       WHERE m.doubt_id = d.id AND eu.role = 'educator'
+    ) le ON true
     JOIN courses c ON c.id = d.course_id
     JOIN users u ON u.id = d.student_id`;
+
+// Title from the question text: code fences are dropped so a pasted snippet never
+// ends up in the heading, and a cut mid-word gets an ellipsis.
+export function deriveTitle(description) {
+  const prose = String(description).replace(/```[\s\S]*?(```|$)/g, ' ').replace(/\s+/g, ' ').trim();
+  const base = prose || 'Question with code';
+  if (base.length <= 80) return base;
+  const cut = base.slice(0, 80);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 40)).trim()}...`;
+}
 
 // Create a doubt (student). Multipart: course_id, description, title?, client_token?, image?
 // Idempotent on (student_id, client_token): a retry returns the original doubt.
@@ -41,7 +69,7 @@ doubtsRouter.post('/', requireRole('student'), imageUpload.single('image'), asyn
 
     const derivedTitle = title && String(title).trim()
       ? String(title).trim().slice(0, 120)
-      : String(description).trim().replace(/\s+/g, ' ').slice(0, 80);
+      : deriveTitle(description);
 
     const doubt = await withTransaction(async (client) => {
       const { rows } = await client.query(
@@ -75,7 +103,8 @@ doubtsRouter.get('/', requireAuth, async (req, res, next) => {
       params.push(req.user.id);
       where.push(`d.student_id = $${params.length}`);
     } else {
-      const { course_id, status, q } = req.query;
+      const { course_id, status, q, needs_reply } = req.query;
+      if (needs_reply === '1') where.push('(d.status <> \'resolved\' AND lm.last_sender_role IS DISTINCT FROM \'educator\')');
       if (course_id) {
         params.push(course_id);
         where.push(`d.course_id = $${params.length}`);
@@ -95,7 +124,12 @@ doubtsRouter.get('/', requireAuth, async (req, res, next) => {
       }
     }
     const sql = `${LIST_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-                 ORDER BY d.updated_at DESC LIMIT 200`;
+                 ORDER BY (d.status <> 'resolved' AND lm.last_sender_role IS DISTINCT FROM 'educator') DESC,
+                          CASE WHEN d.status <> 'resolved' AND lm.last_sender_role IS DISTINCT FROM 'educator'
+                               THEN CASE WHEN le.t IS NULL THEN d.created_at
+                                    ELSE COALESCE((SELECT min(m.created_at) FROM messages m WHERE m.doubt_id = d.id AND m.created_at > le.t), d.created_at) END
+                          END ASC,
+                          d.updated_at DESC LIMIT 200`;
     const { rows } = await pool.query(sql, params);
     res.json({ doubts: rows });
   } catch (err) {
@@ -114,7 +148,11 @@ doubtsRouter.get('/summary', requireRole('educator'), async (req, res, next) => 
         count(*) FILTER (WHERE status = 'resolved')::int    AS resolved,
         count(*) FILTER (WHERE NOT EXISTS (
           SELECT 1 FROM messages m JOIN users su ON su.id = m.sender_id
-          WHERE m.doubt_id = d.id AND su.role = 'educator'))::int AS unanswered
+          WHERE m.doubt_id = d.id AND su.role = 'educator'))::int AS unanswered,
+        count(*) FILTER (WHERE status <> 'resolved' AND (
+          SELECT su.role FROM messages m LEFT JOIN users su ON su.id = m.sender_id
+           WHERE m.doubt_id = d.id ORDER BY m.created_at DESC, m.id DESC LIMIT 1
+        ) IS DISTINCT FROM 'educator')::int AS needs_reply
       FROM doubts d`);
     res.json(rows[0]);
   } catch (err) {

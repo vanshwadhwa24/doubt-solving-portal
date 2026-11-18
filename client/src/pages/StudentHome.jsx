@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { StatusChip, CourseTag, timeAgo, Empty } from '../components/bits.jsx';
+import { StatusChip, CourseTag, timeAgo, Empty, TurnBadge } from '../components/bits.jsx';
+
+const LAST_COURSE_KEY = 'dd_last_course';
 
 function NewDoubt({ courses, onCreated }) {
   const [open, setOpen] = useState(false);
-  const [courseId, setCourseId] = useState('');
+  const [courseId, setCourseId] = useState(() => localStorage.getItem(LAST_COURSE_KEY) || '');
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(() => sessionStorage.getItem('dd_draft') || '');
   const [image, setImage] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -15,6 +17,9 @@ function NewDoubt({ courses, onCreated }) {
   // One idempotency token per composer session: a double-click or network
   // retry can never create the same doubt twice.
   const clientToken = useRef(crypto.randomUUID());
+
+  // Keep an unsent question if the tab is closed or the send fails.
+  useEffect(() => { sessionStorage.setItem('dd_draft', description); }, [description]);
 
   async function submit(e) {
     e.preventDefault();
@@ -28,8 +33,10 @@ function NewDoubt({ courses, onCreated }) {
       form.set('client_token', clientToken.current);
       if (image) form.set('image', image);
       const created = await api.createDoubt(form);
+      localStorage.setItem(LAST_COURSE_KEY, courseId);
       clientToken.current = crypto.randomUUID();
-      setCourseId(''); setTitle(''); setDescription(''); setImage(null); setOpen(false);
+      setTitle(''); setDescription(''); setImage(null); setOpen(false);
+      sessionStorage.removeItem('dd_draft');
       onCreated(created.id);
     } catch (err) {
       setError(err.message);
@@ -39,7 +46,7 @@ function NewDoubt({ courses, onCreated }) {
   }
 
   if (!open) {
-    return <button className="btn" onClick={() => setOpen(true)}>+ Ask a doubt</button>;
+    return <button className="btn" onClick={() => setOpen(true)}>+ Ask a doubt{description ? ' (draft saved)' : ''}</button>;
   }
 
   return (
@@ -61,7 +68,7 @@ function NewDoubt({ courses, onCreated }) {
       <div className="field">
         <label>Your question</label>
         <textarea required value={description} onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe what you tried and where you are stuck. Detail gets better answers." />
+          placeholder="Describe what you tried and where you are stuck. Wrap code in ``` fences to keep its formatting." />
       </div>
       <div className="reply-actions">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -81,48 +88,72 @@ function NewDoubt({ courses, onCreated }) {
   );
 }
 
+export function DoubtCard({ d, role }) {
+  return (
+    <Link to={`/doubt/${d.id}`} className={`card doubt-row${role === 'student' && d.needs_student ? ' doubt-row-you' : ''}`}>
+      <div className="doubt-row-top">
+        <CourseTag code={d.course_code} />
+        <StatusChip status={d.status} />
+        <TurnBadge doubt={d} role={role} />
+      </div>
+      <h3 className="doubt-title">{d.title}</h3>
+      <p className="doubt-snippet">{d.description}</p>
+      <div className="doubt-meta">
+        <span>asked {timeAgo(d.created_at)}</span>
+        <span>last activity {timeAgo(d.updated_at)}</span>
+        {Number(d.message_count) > 0 && <span>{d.message_count} {Number(d.message_count) === 1 ? 'reply' : 'replies'}</span>}
+      </div>
+    </Link>
+  );
+}
+
 export function StudentHome() {
   const [courses, setCourses] = useState([]);
   const [doubts, setDoubts] = useState(null);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   async function refresh() {
     const [cs, ds] = await Promise.all([api.courses(), api.myDoubts()]);
     setCourses(cs.courses);
     setDoubts(ds.doubts);
   }
-  useEffect(() => { refresh().catch(console.error); }, []);
+  useEffect(() => {
+    refresh().catch((e) => setError(e.message));
+    // Pick up educator replies while the page is open.
+    const timer = setInterval(() => { if (!document.hidden) refresh().catch(() => {}); }, 20000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const active = (doubts || []).filter((d) => d.status !== 'resolved');
+  const resolvedCount = (doubts || []).length - active.length;
+  const yourTurn = active.filter((d) => d.needs_student).length;
 
   return (
     <>
       <div className="page-head">
         <div>
           <h1 className="page-title">My doubts</h1>
-          <p className="page-sub">Ask, track, and keep the conversation going.</p>
+          <p className="page-sub">
+            {yourTurn > 0 ? `${yourTurn} ${yourTurn === 1 ? 'doubt has' : 'doubts have'} a reply waiting for you.` : 'Ask, track, and keep the conversation going.'}
+          </p>
         </div>
       </div>
-      <NewDoubt courses={courses} onCreated={() => refresh()} />
+      <NewDoubt courses={courses} onCreated={(id) => navigate(`/doubt/${id}?sent=1`)} />
+      {error && <div className="form-error">{error}</div>}
       {doubts === null ? <div className="loading-line">Loading your doubts…</div> :
-        doubts.length === 0 ? (
-          <Empty title="No doubts yet">Ask your first question above - it lands straight in your educator's inbox.</Empty>
+        active.length === 0 ? (
+          <Empty title={resolvedCount ? 'Nothing open right now' : 'No doubts yet'}>
+            {resolvedCount ? 'All your doubts are resolved.' : "Ask your first question above - it lands straight in your educator's inbox."}
+          </Empty>
         ) : (
           <div className="doubt-list">
-            {doubts.map((d) => (
-              <Link key={d.id} to={`/doubt/${d.id}`} className="card doubt-row">
-                <div className="doubt-row-top">
-                  <CourseTag code={d.course_code} />
-                  <StatusChip status={d.status} />
-                  {Number(d.message_count) > 0 && <span className="form-note">{d.message_count} {Number(d.message_count) === 1 ? 'reply' : 'replies'}</span>}
-                </div>
-                <h3 className="doubt-title">{d.title}</h3>
-                <p className="doubt-snippet">{d.description}</p>
-                <div className="doubt-meta">
-                  <span>asked {timeAgo(d.created_at)}</span>
-                  <span>updated {timeAgo(d.updated_at)}</span>
-                </div>
-              </Link>
-            ))}
+            {active.map((d) => <DoubtCard key={d.id} d={d} role="student" />)}
           </div>
         )}
+      {resolvedCount > 0 && (
+        <p className="resolved-link"><Link to="/resolved">Resolved doubts ({resolvedCount}) →</Link></p>
+      )}
     </>
   );
 }

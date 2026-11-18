@@ -5,6 +5,7 @@ import { Login } from './pages/Login.jsx';
 import { Shell } from './components/Shell.jsx';
 import { StudentHome } from './pages/StudentHome.jsx';
 import { DoubtThread } from './pages/DoubtThread.jsx';
+import { StudentResolved } from './pages/StudentResolved.jsx';
 import { EducatorInbox } from './pages/EducatorInbox.jsx';
 
 function Home() {
@@ -21,6 +22,7 @@ function Protected() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/my" element={<StudentHome />} />
+        <Route path="/resolved" element={<StudentResolved />} />
         <Route path="/doubt/:id" element={<DoubtThread />} />
         <Route path="/inbox" element={<EducatorInbox />} />
         <Route path="*" element={<Navigate to="/" replace />} />

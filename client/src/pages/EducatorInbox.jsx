@@ -1,47 +1,80 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
-import { StatusChip, CourseTag, timeAgo, Empty } from '../components/bits.jsx';
+import { StatusChip, CourseTag, timeAgo, Empty, TurnBadge } from '../components/bits.jsx';
 
-const SUMMARY_CELLS = [
-  ['unanswered', 'Unanswered'],
-  ['open', 'Open'],
-  ['in_progress', 'In progress'],
-  ['answered', 'Answered'],
-  ['resolved', 'Resolved'],
+const TABS = [
+  ['needs', 'Needs reply', 'needs_reply'],
+  ['open', 'Open', 'open'],
+  ['in_progress', 'Ongoing', 'in_progress'],
+  ['answered', 'Answered', 'answered'],
+  ['resolved', 'Resolved', 'resolved'],
 ];
+const STATUS_NAME = { open: 'Open', in_progress: 'Ongoing', answered: 'Answered', resolved: 'Resolved' };
+// Direct one-click moves per status.
+const MOVES = {
+  open: [{ to: 'in_progress', label: 'Start working', primary: true }],
+  in_progress: [{ to: 'open', label: 'Back to Open' }],
+  answered: [{ to: 'resolved', label: 'Mark resolved' }],
+  resolved: [{ to: 'open', label: 'Reopen' }],
+};
+const EMPTY_TEXT = {
+  needs: 'Nothing is waiting on you. New doubts and student follow-ups show up here, longest wait first.',
+  open: 'No open doubts.',
+  in_progress: 'Nothing ongoing. Use "Start working" on an open doubt to move it here.',
+  answered: 'No answered doubts waiting on a student.',
+  resolved: 'Nothing resolved yet.',
+};
 
 export function EducatorInbox() {
+  const [params, setParams] = useSearchParams();
+  const tab = TABS.some((t) => t[0] === params.get('tab')) ? params.get('tab') : 'needs';
+  const courseId = params.get('course') || '';
+  const search = params.get('q') || '';
+  const [q, setQ] = useState(search);
   const [summary, setSummary] = useState(null);
   const [doubts, setDoubts] = useState(null);
   const [courses, setCourses] = useState([]);
-  const [courseId, setCourseId] = useState('');
-  const [status, setStatus] = useState('');
-  const [q, setQ] = useState('');
-  const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
+  const [moved, setMoved] = useState(null);
 
-  const refresh = useCallback(async (filters = {}) => {
-    const params = {
-      course_id: filters.courseId ?? courseId,
-      status: filters.status ?? status,
-      q: filters.q ?? search,
-    };
-    const [s, d] = await Promise.all([api.summary(), api.inbox(params)]);
+  const refresh = useCallback(async () => {
+    const f = { course_id: courseId, q: search };
+    if (tab === 'needs') f.needs_reply = '1'; else f.status = tab;
+    const [s, d] = await Promise.all([api.summary(), api.inbox(f)]);
     setSummary(s);
     setDoubts(d.doubts);
-  }, [courseId, status, search]);
+    setError('');
+  }, [tab, courseId, search]);
 
   useEffect(() => {
     api.courses().then((c) => setCourses(c.courses)).catch(console.error);
-    refresh().catch(console.error);
-    // Keep the inbox live while it is open.
-    const timer = setInterval(() => refresh().catch(() => {}), 15000);
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    setDoubts(null);
+    refresh().catch((e) => setError(e.message));
+    // Keep the inbox live while it is open.
+    const timer = setInterval(() => { if (!document.hidden) refresh().catch(() => {}); }, 15000);
+    return () => clearInterval(timer);
+  }, [refresh]);
 
-  function applyFilters(next = {}) {
-    refresh(next).catch(console.error);
+  // Filters live in the URL so they survive opening a doubt and coming back.
+  function setParam(key, value) {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value); else next.delete(key);
+    setParams(next, { replace: true });
+  }
+
+  async function move(d, to) {
+    try {
+      await api.setStatus(d.id, to);
+      setMoved({ id: d.id, title: d.title, from: d.status, to });
+      await refresh();
+    } catch (e) { setError(e.message); }
+  }
+  async function undo() {
+    if (!moved) return;
+    try { await api.setStatus(moved.id, moved.from); setMoved(null); await refresh(); } catch (e) { setError(e.message); }
   }
 
   return (
@@ -49,65 +82,70 @@ export function EducatorInbox() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Doubt inbox</h1>
-          <p className="page-sub">Every student question in one place. Refreshes automatically.</p>
+          <p className="page-sub">Longest-waiting doubts first. Refreshes automatically.</p>
         </div>
       </div>
 
-      {summary && (
-        <div className="summary-strip">
-          {SUMMARY_CELLS.map(([key, label]) => (
-            <div key={key} className="card summary-cell">
-              <span className="num">{summary[key]}</span>
-              <span className="lbl">{label}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="tabs" role="tablist">
+        {TABS.map(([key, label, field]) => (
+          <button key={key} role="tab" aria-selected={tab === key}
+            className={`tab${tab === key ? ' is-active' : ''}`} onClick={() => setParam('tab', key === 'needs' ? '' : key)}>
+            {label}<span className="tab-count">{summary ? summary[field] : '·'}</span>
+          </button>
+        ))}
+      </div>
 
       <div className="filter-bar">
-        <select value={courseId} onChange={(e) => { setCourseId(e.target.value); applyFilters({ courseId: e.target.value }); }}>
+        <select aria-label="Course" value={courseId} onChange={(e) => setParam('course', e.target.value)}>
           <option value="">All courses</option>
           {courses.map((c) => <option key={c.id} value={c.id}>{c.code} - {c.name}</option>)}
         </select>
-        <select value={status} onChange={(e) => { setStatus(e.target.value); applyFilters({ status: e.target.value }); }}>
-          <option value="">Any status</option>
-          <option value="open">Open</option>
-          <option value="in_progress">In progress</option>
-          <option value="answered">Answered</option>
-          <option value="resolved">Resolved</option>
-        </select>
-        <input value={q} onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && (setSearch(q), applyFilters({ q }))}
+        <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search"
+          onKeyDown={(e) => e.key === 'Enter' && setParam('q', q.trim())}
           placeholder="Search doubts or students…" />
-        <button className="btn btn-ghost" onClick={() => { setSearch(q); applyFilters({ q }); }}>Search</button>
-        {(courseId || status || search) && (
-          <button className="link-btn" onClick={() => { setCourseId(''); setStatus(''); setQ(''); setSearch(''); applyFilters({ courseId: '', status: '', q: '' }); }}>
-            Clear
-          </button>
+        <button className="btn btn-ghost" onClick={() => setParam('q', q.trim())}>Search</button>
+        {(courseId || search) && (
+          <button className="link-btn" onClick={() => { setQ(''); setParams(tab === 'needs' ? {} : { tab }, { replace: true }); }}>Clear</button>
         )}
       </div>
 
+      {moved && (
+        <div className="toast" role="status">
+          Moved "{moved.title.length > 50 ? `${moved.title.slice(0, 50)}...` : moved.title}" to {STATUS_NAME[moved.to]}.
+          <button className="link-btn" onClick={undo}>Undo</button>
+        </div>
+      )}
+      {error && <div className="form-error">{error}</div>}
+
       {doubts === null ? <div className="loading-line">Loading inbox…</div> :
         doubts.length === 0 ? (
-          <Empty title="Nothing here">No doubts match these filters.</Empty>
+          <Empty title={search || courseId ? 'Nothing here' : 'All clear'}>
+            {search || courseId ? 'No doubts match these filters.' : EMPTY_TEXT[tab]}
+          </Empty>
         ) : (
           <div className="doubt-list">
             {doubts.map((d) => (
-              <Link key={d.id} to={`/doubt/${d.id}`} className="card doubt-row">
-                <div className="doubt-row-top">
-                  <CourseTag code={d.course_code} />
-                  <StatusChip status={d.status} />
-                  {!d.has_educator_reply && <span className="chip chip-open">needs reply</span>}
+              <div key={d.id} className="card doubt-card">
+                <Link to={`/doubt/${d.id}`} className="doubt-row">
+                  <div className="doubt-row-top">
+                    <CourseTag code={d.course_code} />
+                    <StatusChip status={d.status} />
+                    <TurnBadge doubt={d} role="educator" />
+                  </div>
+                  <h3 className="doubt-title">{d.title}</h3>
+                  <p className="doubt-snippet">{d.description}</p>
+                  <div className="doubt-meta">
+                    <span><strong>{d.student_name}</strong> · {d.student_email}</span>
+                    <span>asked {timeAgo(d.created_at)}</span>
+                    {Number(d.message_count) > 0 && <span>{d.message_count} {Number(d.message_count) === 1 ? 'message' : 'messages'}</span>}
+                  </div>
+                </Link>
+                <div className="doubt-actions">
+                  {(MOVES[d.status] || []).map((m) => (
+                    <button key={m.to} className={`btn btn-small${m.primary ? '' : ' btn-ghost'}`} onClick={() => move(d, m.to)}>{m.label}</button>
+                  ))}
                 </div>
-                <h3 className="doubt-title">{d.title}</h3>
-                <p className="doubt-snippet">{d.description}</p>
-                <div className="doubt-meta">
-                  <span><strong>{d.student_name}</strong> · {d.student_email}</span>
-                  <span>asked {timeAgo(d.created_at)}</span>
-                  <span>updated {timeAgo(d.updated_at)}</span>
-                  {Number(d.message_count) > 0 && <span>{d.message_count} {Number(d.message_count) === 1 ? 'reply' : 'replies'}</span>}
-                </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
