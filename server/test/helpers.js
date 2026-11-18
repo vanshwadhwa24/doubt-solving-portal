@@ -5,7 +5,7 @@ import { hashPassword } from '../src/auth.js';
 export async function resetDb() {
   await migrate();
   await pool.query(
-    'TRUNCATE attachments, messages, doubts, sessions, telegram_updates, users, courses RESTART IDENTITY CASCADE',
+    'TRUNCATE attachments, messages, doubts, sessions, telegram_updates, telegram_link_codes, users, courses RESTART IDENTITY CASCADE',
   );
   await pool.query(
     `INSERT INTO courses (code, name) VALUES ('MATH101', 'Mathematics'), ('CS301', 'Computer Science')`,
