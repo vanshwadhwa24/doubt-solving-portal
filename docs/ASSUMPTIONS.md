@@ -21,7 +21,22 @@
 - Text-only intake; photo messages are ignored. Educator answers are pushed back as text.
 - Updates are deduplicated in `telegram_updates` so a bot restart never double-posts a doubt.
 
+## Whose turn it is
+
+- Turn is **derived from the last message**, not stored: educator last means the student's turn; otherwise (student last, or no replies) the educator's. Status follows: an educator reply sets Answered, a student follow-up sets In Progress (or keeps Open if never worked on).
+- The API refuses `answered` unless the educator sent the last message (409), so status and turn cannot disagree.
+- Migration `002_status_follows_turn.sql` repairs older rows that said Answered while the student had the last word. It changes status only; message history is untouched.
+- Wait time is measured from the last student message (or the doubt's creation).
+
+## UI behaviour
+
+- Student home lists active doubts only; resolved ones are at `#/resolved`. Students may resolve their own doubt; an educator can reopen.
+- Thread refreshes every 10s and the student home every 20s by polling (no websockets); polling does not pause for hidden tabs.
+- Code fences render as code blocks in threads and show as "[code]" in list excerpts.
+
 ## Known limitations
+
+- Telegram has not been tested against a real bot; phone testing used a 390px browser viewport, not a device. No accessibility audit or load test.
 
 - No rate limiting or CAPTCHA on login (would be required before a public deployment).
 - No email/notification delivery - students see answers when they open the app (or via the optional Telegram bot).

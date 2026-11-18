@@ -72,3 +72,28 @@ test('titles skip code fences and cut at a word boundary', () => {
   const long = deriveTitle('word '.repeat(40));
   assert.ok(long.length <= 83 && long.endsWith('...'));
 });
+
+test('Answered cannot be claimed while the student is waiting', async () => {
+  const s1 = await login('s1@test.dev', 'student123');
+  const ed = await login('educator@test.dev', 'educator123');
+  const id = (await s1.post('/api/doubts').field({ course_id: 1, description: 'Needs a reply first' })).body.id;
+  const res = await ed.patch(`/api/doubts/${id}/messages/status`).send({ status: 'answered' });
+  assert.equal(res.status, 409);
+  await ed.post(`/api/doubts/${id}/messages`).field({ body: 'Here you go' });
+  assert.equal((await ed.patch(`/api/doubts/${id}/messages/status`).send({ status: 'answered' })).status, 200);
+});
+
+test('migration 002 repairs legacy Answered doubts whose last message is the student\'s, keeping history', async () => {
+  const fs = await import('node:fs');
+  const ed = await login('educator@test.dev', 'educator123');
+  const s1 = await login('s1@test.dev', 'student123');
+  const id = (await s1.post('/api/doubts').field({ course_id: 1, description: 'Legacy' })).body.id;
+  await ed.post(`/api/doubts/${id}/messages`).field({ body: 'Answer' });
+  await s1.post(`/api/doubts/${id}/messages`).field({ body: 'Student wrote again' });
+  await pool.query("UPDATE doubts SET status = 'answered' WHERE id = $1", [id]); // legacy inconsistent record
+  const before = (await pool.query('SELECT count(*)::int AS n FROM messages WHERE doubt_id = $1', [id])).rows[0].n;
+  await pool.query(fs.readFileSync(new URL('../db/migrations/002_status_follows_turn.sql', import.meta.url), 'utf8'));
+  const row = (await pool.query('SELECT status FROM doubts WHERE id = $1', [id])).rows[0];
+  assert.equal(row.status, 'in_progress');
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM messages WHERE doubt_id = $1', [id])).rows[0].n, before);
+});

@@ -78,6 +78,12 @@ export function waitLabel(iso) {
   return `${Math.floor(hours / 24)} d`;
 }
 
+// Short plain-text preview: code blocks become "[code]" so lists stay readable.
+export function excerpt(text, max = 180) {
+  const flat = String(text).replace(/```[\s\S]*?(```|$)/g, ' [code] ').replace(/\s+/g, ' ').trim();
+  return flat.length > max ? `${flat.slice(0, max).replace(/\s\S*$/, '')}...` : flat;
+}
+
 export function Empty({ title, children }) {
   return (
     <div className="empty card">

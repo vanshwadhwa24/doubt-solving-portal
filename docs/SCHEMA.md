@@ -74,3 +74,5 @@ erDiagram
 - **Conversation model:** a doubt holds the question; replies are ordered `messages`. Attachments hang off either the doubt (creation-time image) or a specific message.
 - **Indexes** on `doubts(status)`, `doubts(course_id)`, `doubts(student_id)` and `messages(doubt_id, created_at)` keep inbox filtering and thread reads cheap as volume grows.
 - **Sessions** store only the SHA-256 hash of the bearer token.
+
+- **Migration 002** is data-only (no schema change): it sets legacy `answered` doubts whose last message is not from an educator to `in_progress` (or `open` if there are no messages).

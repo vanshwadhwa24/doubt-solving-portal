@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
-import { StatusChip, CourseTag, timeAgo, Empty, TurnBadge } from '../components/bits.jsx';
+import { StatusChip, CourseTag, timeAgo, Empty, TurnBadge, excerpt } from '../components/bits.jsx';
 
 const TABS = [
   ['needs', 'Needs reply', 'needs_reply'],
@@ -11,13 +11,14 @@ const TABS = [
   ['resolved', 'Resolved', 'resolved'],
 ];
 const STATUS_NAME = { open: 'Open', in_progress: 'Ongoing', answered: 'Answered', resolved: 'Resolved' };
-// Direct one-click moves per status.
-const MOVES = {
-  open: [{ to: 'in_progress', label: 'Start working', primary: true }],
-  in_progress: [{ to: 'open', label: 'Back to Open' }],
-  answered: [{ to: 'resolved', label: 'Mark resolved' }],
-  resolved: [{ to: 'open', label: 'Reopen' }],
-};
+// Direct one-click moves. When the educator owes a reply, replying is the primary action and
+// closing is not offered from the list; once the educator has answered, resolving is.
+function movesFor(d) {
+  if (d.status === 'resolved') return [{ to: 'open', label: 'Reopen' }];
+  if (d.status === 'open') return [{ to: 'in_progress', label: 'Start working' }];
+  if (d.needs_educator) return [{ to: 'open', label: 'Back to Open' }];
+  return [{ to: 'open', label: 'Back to Open' }, { to: 'resolved', label: 'Mark resolved' }];
+}
 const EMPTY_TEXT = {
   needs: 'Nothing is waiting on you. New doubts and student follow-ups show up here, longest wait first.',
   open: 'No open doubts.',
@@ -133,7 +134,7 @@ export function EducatorInbox() {
                     <TurnBadge doubt={d} role="educator" />
                   </div>
                   <h3 className="doubt-title">{d.title}</h3>
-                  <p className="doubt-snippet">{d.description}</p>
+                  <p className="doubt-snippet">{excerpt(d.description)}</p>
                   <div className="doubt-meta">
                     <span><strong>{d.student_name}</strong> · {d.student_email}</span>
                     <span>asked {timeAgo(d.created_at)}</span>
@@ -141,8 +142,9 @@ export function EducatorInbox() {
                   </div>
                 </Link>
                 <div className="doubt-actions">
-                  {(MOVES[d.status] || []).map((m) => (
-                    <button key={m.to} className={`btn btn-small${m.primary ? '' : ' btn-ghost'}`} onClick={() => move(d, m.to)}>{m.label}</button>
+                  {d.needs_educator && <Link to={`/doubt/${d.id}`} className="btn btn-small">{d.has_educator_reply ? 'Reply to follow-up' : 'Open & reply'}</Link>}
+                  {movesFor(d).map((m) => (
+                    <button key={m.to} className="btn btn-small btn-ghost" onClick={() => move(d, m.to)}>{m.label}</button>
                   ))}
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { StatusChip, CourseTag, timeAgo, Empty, TurnBadge } from '../components/bits.jsx';
+import { StatusChip, CourseTag, timeAgo, Empty, TurnBadge, excerpt } from '../components/bits.jsx';
 
 const LAST_COURSE_KEY = 'dd_last_course';
 
@@ -97,7 +97,7 @@ export function DoubtCard({ d, role }) {
         <TurnBadge doubt={d} role={role} />
       </div>
       <h3 className="doubt-title">{d.title}</h3>
-      <p className="doubt-snippet">{d.description}</p>
+      <p className="doubt-snippet">{excerpt(d.description)}</p>
       <div className="doubt-meta">
         <span>asked {timeAgo(d.created_at)}</span>
         <span>last activity {timeAgo(d.updated_at)}</span>

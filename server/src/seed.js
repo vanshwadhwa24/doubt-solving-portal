@@ -97,7 +97,7 @@ async function seed() {
     await doubt(rohan, courseId['CS301'],
       'Difference between HTTP 401 and 403',
       'When should an API return 401 versus 403? Both seem to mean "you cannot access this".',
-      'answered',
+      'in_progress',
       [
         [educator, '401 means unauthenticated - we do not know who you are (log in first). 403 means authenticated but not allowed - we know who you are and this resource is not yours. This very portal uses exactly that split.'],
         [rohan, 'That is a neat way to remember it, thanks!'],

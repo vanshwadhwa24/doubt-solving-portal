@@ -8,14 +8,18 @@ A centralized portal where students submit academic doubts and educators manage 
 
 **Students**
 - Submit a doubt against a course/subject, with an optional image/screenshot
-- See all their past doubts and track each one's status
+- Home shows active doubts only, each labelled with whose turn it is ("Educator replied - your turn" or "Waiting for educator"); resolved doubts live on a separate Resolved page
+- After submitting, land on the doubt with a confirmation; the draft and last course are remembered
+- Mark their own doubt resolved once it is answered
 - Read educator answers and continue the conversation in a thread
 
 **Educators**
-- One inbox for every incoming doubt, with live counts (unanswered, open, in progress, answered, resolved)
+- Inbox tabs with live counts: Needs reply, Open, Ongoing, Answered, Resolved. Longest-waiting first, with the wait time shown
+- One-click moves between Open and Ongoing (with Undo). The primary button is always the next step: reply when a reply is owed, otherwise move or resolve
 - Filter by course and status; free-text search over questions, replies and student names
 - Open a doubt to see the complete conversation history
-- Reply in the thread; update statuses (Open, In Progress, Answered, Resolved)
+- Reply in the thread; status follows the conversation (an educator reply sets Answered, a student follow-up returns it to the educator's queue)
+- Thread and student home refresh on their own (10s and 20s)
 
 **Telegram bridge (optional, bonus)**
 - With a bot token set, students can send doubts to a Telegram bot; they appear in the educator inbox and educator answers are pushed back to the chat
@@ -68,7 +72,7 @@ npm run dev        # server on :4000, Vite dev server on :5173 (proxied)
 npm test
 ```
 
-Runs the API suite (13 tests) against a separate `doubt_portal_test` database (created from the same migrations; set `DATABASE_URL` to override).
+Runs the API suite (19 tests) against a separate `doubt_portal_test` database (created from the same migrations; set `DATABASE_URL` to override).
 
 ## E2E smoke test
 
@@ -80,13 +84,14 @@ python3 scripts/e2e-smoke.py
 
 ## Demo video
 
-`demo/demo.mp4` (about 5 minutes, silent screen recording at a deliberate pace, no voiceover):
-1. Desktop - student logs in, asks a doubt in MATH101 with a screenshot of their notes
-2. Desktop - educator triages the inbox (summary counts, Open filter, search), answers, marks the doubt resolved
-3. Phone-width view - the student reads the answer on mobile
-4. Appendix - a rapid double-click on Submit still creates exactly one doubt (idempotent submission)
+`demo/demo.mp4` is a silent, captioned screen recording (no voiceover). About 3 minutes (177 s). The phone-width section plays in a 390px window inside the 1280x760 frame, so the rest of the frame is grey. It shows:
+1. Student home (active only), the Resolved page, asking a doubt with code and a screenshot, the confirmation
+2. Educator inbox: Needs reply first, Start working with Undo, Ongoing tab, thread banner, sending an answer
+3. Student reads the reply, follows up; educator sees it back under Needs reply and answers; student marks it resolved and it leaves the home page
+4. Phone width (390px) for both roles
+5. Appendix: double-clicking Submit still creates one doubt
 
-`demo/demo.mp4` walks the full loop end to end: student login, asking a doubt with a screenshot, educator inbox triage (filters, search), answering, status changes, and the student reading the answer on a phone-width view. It is a silent screen recording at a deliberate pace - no voiceover.
+Re-record with `python3 scripts/record-demo.py` against a freshly seeded app (see the script header).
 
 ## Configuration
 

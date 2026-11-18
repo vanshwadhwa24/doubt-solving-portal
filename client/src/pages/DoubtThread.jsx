@@ -91,14 +91,13 @@ export function DoubtThread() {
   const isEducator = user.role === 'educator';
   const backTo = isEducator ? '/inbox' : '/';
 
-  // Educator direct moves; a student can close their own doubt.
+  // Educator direct moves. Resolving is not offered while the educator still owes a reply.
+  const owes = doubt.needs_educator;
   const actions = isEducator
-    ? {
-        open: [['in_progress', 'Start working', true], ['resolved', 'Mark resolved']],
-        in_progress: [['open', 'Back to Open'], ['resolved', 'Mark resolved']],
-        answered: [['resolved', 'Mark resolved'], ['in_progress', 'Back to Ongoing']],
-        resolved: [['open', 'Reopen']],
-      }[doubt.status]
+    ? (doubt.status === 'resolved' ? [['open', 'Reopen']]
+      : doubt.status === 'open' ? [['in_progress', 'Start working', true]]
+      : owes ? [['open', 'Back to Open']]
+      : [['resolved', 'Mark resolved'], ['open', 'Back to Open']])
     : doubt.status === 'resolved' ? [] : [['resolved', 'This solved it - mark resolved']];
 
   return (
@@ -121,8 +120,8 @@ export function DoubtThread() {
         {actions && actions.length > 0 && (
           <div className="status-actions">
             {isEducator && <span className="form-note">Move to</span>}
-            {actions.map(([to, label, primary]) => (
-              <button key={to} className={`btn btn-small${primary ? '' : ' btn-ghost'}`} onClick={() => changeStatus(to)}>{label}</button>
+            {actions.map(([to, label]) => (
+              <button key={to} className="btn btn-small btn-ghost" onClick={() => changeStatus(to)}>{label}</button>
             ))}
           </div>
         )}

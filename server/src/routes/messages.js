@@ -84,6 +84,15 @@ messagesRouter.patch('/status', requireAuth, async (req, res, next) => {
     if (!VALID_STATUS.includes(status)) {
       return res.status(400).json({ error: `status must be one of: ${VALID_STATUS.join(', ')}` });
     }
+    if (status === 'answered') {
+      // Answered means the educator spoke last; never let a button claim it over a waiting student.
+      const last = await pool.query(
+        `SELECT u.role FROM messages m LEFT JOIN users u ON u.id = m.sender_id
+          WHERE m.doubt_id = $1 ORDER BY m.created_at DESC, m.id DESC LIMIT 1`, [doubt.id]);
+      if (last.rows[0]?.role !== 'educator') {
+        return res.status(409).json({ error: 'reply to the student before marking this answered' });
+      }
+    }
     await pool.query('UPDATE doubts SET status = $1, updated_at = now() WHERE id = $2', [status, doubt.id]);
     res.json({ id: doubt.id, status });
   } catch (err) {

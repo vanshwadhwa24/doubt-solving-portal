@@ -21,11 +21,11 @@ Base URL: `/api`. Auth is a session cookie (`dd_session`, httpOnly) issued by lo
 | Method | Path                | Role     | Description |
 | ------ | ------------------- | -------- | ----------- |
 | POST   | `/doubts`           | student  | Multipart form: `course_id`, `description` (required), `title`, `client_token`, `image` (optional). Creates the doubt (201). A repeated `client_token` returns the original with `deduplicated: true` (200). |
-| GET    | `/doubts`           | any      | Students: their own doubts. Educators: all doubts; query filters `course_id`, `status` (`open\|in_progress\|answered\|resolved`), `q` (searches question, replies, student name). |
+| GET    | `/doubts`           | any      | Students: their own doubts. Educators: all doubts; query filters `course_id`, `status` (`open\|in_progress\|answered\|resolved`), `q` (searches question, replies, student name), `needs_reply=1` (only doubts whose last message is not the educator's, i.e. the educator owes a reply). Each row also carries `needs_educator`, `needs_student`, `waiting_since`, `last_sender_role`, `last_message_at`. |
 | GET    | `/doubts/summary`   | educator | Counts `{open, in_progress, answered, resolved, unanswered}`. |
 | GET    | `/doubts/:id`       | owner/educator | `{doubt, messages, attachments}` - full conversation. |
 | POST   | `/doubts/:id/messages` | owner/educator | Multipart: `body`, optional `image`. Adds a reply. Educator replies mark the doubt `answered`; a student follow-up on `answered`/`resolved` reopens it to `in_progress`. |
-| PATCH  | `/doubts/:id/messages/status` | educator | Body `{status}`. Moves the doubt through its lifecycle. |
+| PATCH  | `/doubts/:id/messages/status` | any (own) | Body `{status}`. Educators: any status, except `answered` returns 409 unless the educator sent the last message. Students: only `resolved`, only on their own doubt (403 otherwise). |
 
 ## Attachments
 

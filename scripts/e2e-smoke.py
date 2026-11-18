@@ -1,6 +1,10 @@
-import asyncio
+import asyncio, base64, os, tempfile
 from playwright.async_api import async_playwright
 BASE = "http://localhost:4000"
+# Tiny generated PNG so the script needs no fixture files.
+NOTE_PNG = os.path.join(tempfile.gettempdir(), "doubtdesk-smoke-note.png")
+with open(NOTE_PNG, "wb") as f:
+    f.write(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))
 
 async def login(page, email, pw):
     await page.goto(BASE)
@@ -12,7 +16,7 @@ async def login(page, email, pw):
 
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch()
+        b = await p.chromium.launch(channel=os.environ.get('PW_CHANNEL') or None)  # PW_CHANNEL=chrome to use installed Chrome
         page = await (await b.new_context(viewport={"width":1280,"height":800})).new_page()
         page.on("pageerror", lambda e: print("PAGEERROR:", str(e)[:400]))
         # student
@@ -29,13 +33,13 @@ async def main():
         assert val == pick['v'], f"select did not stick: {val} vs {pick['v']}"
         await page.fill('input[maxlength="120"]', "Why is the vertex of a parabola the minimum point?")
         await page.fill("textarea", "Dry run question body.")
-        await page.set_input_files('input[type="file"]', "/tmp/demo/notes.png")
+        await page.set_input_files('input[type="file"]', NOTE_PNG)
         await page.click('button:has-text("Submit doubt")')
-        await page.wait_for_selector('text=/vertex of a parabola/i', timeout=8000)
-        print("ASSERT 1 OK: doubt created and listed")
-        await page.click('text=/vertex of a parabola/i >> nth=0')
+        await page.wait_for_selector('text=Your educator will see it in their inbox', timeout=8000)
+        print("ASSERT 1 OK: doubt created, student lands on the thread with a confirmation")
         await page.wait_for_selector('text=Dry run question body.', timeout=8000)
-        print("ASSERT 2 OK: thread opens with image attached")
+        assert await page.locator('.thread-head img').count() == 1, "image attachment missing"
+        print("ASSERT 2 OK: thread shows the question and its image")
         await page.click('text=Sign out')
         await page.wait_for_selector('input[type="email"]', timeout=8000)
         # educator
@@ -53,15 +57,16 @@ async def main():
         await page.fill("textarea", "Dry run educator answer.")
         await page.click('button:has-text("Send answer")')
         await page.wait_for_selector('text=Dry run educator answer.', timeout=8000)
-        await page.locator("select").last.select_option(value="resolved")
-        await page.wait_for_timeout(800)
-        print("ASSERT 4 OK: reply persisted, status set resolved")
+        await page.click('button:has-text("Mark resolved")')
+        await page.wait_for_selector('.thread-head .chip:has-text("Resolved")', timeout=8000)
+        print("ASSERT 4 OK: reply persisted, educator marked it resolved")
         await page.click('text=Sign out')
         await page.wait_for_selector('input[type="email"]', timeout=8000)
         # student sees answer
         await login(page, "aarav@doubtdesk.demo", "student123")
-        await page.goto(BASE + '/#/my')
+        await page.goto(BASE + '/#/resolved')
         await page.wait_for_selector('text=/vertex of a parabola/i', timeout=8000)
+        print("ASSERT 4b OK: resolved doubt is on the Resolved page, not the active home")
         await page.click('text=/vertex of a parabola/i >> nth=0')
         await page.wait_for_selector('text=Dry run educator answer.', timeout=8000)
         print("ASSERT 5 OK: student sees educator answer")
