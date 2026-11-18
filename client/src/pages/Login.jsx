@@ -26,7 +26,6 @@ export function Login() {
       <form className="login-card" onSubmit={onSubmit}>
         <span className="brand-mark">?</span>
         <h1>DoubtDesk</h1>
-        <p className="sub">Every doubt answered, nothing buried.</p>
         {error && <div className="form-error">{error}</div>}
         <div className="field">
           <label htmlFor="email">Email</label>

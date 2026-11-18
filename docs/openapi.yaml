@@ -97,6 +97,15 @@ paths:
       responses:
         '200': {description: Doubt with messages and attachments}
         '404': {description: Not found or not visible to you}
+  /doubts/{id}/similar:
+    get:
+      summary: Earlier answers to similar doubts, same course (educator only)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Up to 3 matches; identity scrubbed to [student] / [email] placeholders}
+        '403': {description: Educators only}
+        '404': {description: Doubt not found}
   /doubts/{id}/messages:
     post:
       summary: Reply in a doubt thread

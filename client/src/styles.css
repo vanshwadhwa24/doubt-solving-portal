@@ -1,4 +1,5 @@
-/* DoubtDesk design system - warm paper, ink, deep green, amber. */
+/* DoubtDesk design system - cream paper, black ink, hard borders and offset shadows, lilac and lime accents.
+   The later "visual language" block at the end of this file owns the look; earlier rules give structure. */
 :root {
   --paper: #f6f1e8;
   --card: #fffdf8;
@@ -205,4 +206,119 @@ input, select, textarea { font: inherit; color: var(--ink); }
   .filter-bar input { flex: 1 1 60%; min-width: 0; }
   .doubt-actions .btn-small { flex: 1; }
   .link-btn { min-height: 44px; padding: 0 6px; }
+}
+
+
+/* =====================================================================
+   Visual language: bold type, 2px ink borders, hard offset shadows.
+   Lime = the thing to do next. Lilac = the other person has the ball / selected.
+   ===================================================================== */
+:root {
+  --paper: #fbf3ea; --card: #fffaf3; --ink: #1c1814; --ink-2: #5a5249; --line: #1c1814;
+  --lime: #d9f55a; --lilac: #c9b8ea; --pink: #f2aedc;
+  --radius: 4px;
+  --shadow: 4px 4px 0 var(--ink);
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-family: 'Helvetica Neue', 'Inter', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+}
+h1, h2, h3, .serif, .brand-name, .doubt-title, .empty .big, .summary-cell .num {
+  font-family: inherit; font-weight: 800; letter-spacing: -0.03em;
+}
+.mono, .brand-role, .tab-count, .doubt-meta, .msg-who, .msg-time, .form-note, .course-tag, .chip, .turn { font-family: var(--mono); }
+.mono { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.07em; }
+
+.topbar { background: var(--paper); border-bottom: 2px solid var(--ink); }
+.brand-mark { background: var(--lime); color: var(--ink); border: 2px solid var(--ink); border-radius: 4px; box-shadow: 2px 2px 0 var(--ink); font-family: inherit; font-weight: 800; }
+.brand-name { font-size: 21px; }
+.brand-role { color: var(--ink); background: var(--lilac); border: 1.5px solid var(--ink); padding: 1px 7px; font-size: 10.5px; }
+.avatar { background: var(--lilac); color: var(--ink); border: 2px solid var(--ink); }
+.link-btn { color: var(--ink); }
+
+.page-title { font-size: 40px; line-height: 1; margin: 0 0 8px; }
+.page-sub { color: var(--ink); font-family: var(--mono); font-size: 13px; margin: 0; }
+.page-sub:empty { display: none; }
+
+.btn { background: var(--lime); color: var(--ink); border: 2px solid var(--ink); border-radius: 4px; box-shadow: 3px 3px 0 var(--ink);
+  font-weight: 800; letter-spacing: -0.01em; transition: transform .08s ease, box-shadow .08s ease; }
+.btn:hover { background: var(--lime); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+.btn:disabled { opacity: 0.45; box-shadow: none; transform: none; }
+.btn-ghost { background: var(--card); color: var(--ink); border-color: var(--ink); }
+.btn-ghost:hover { background: var(--card); }
+.btn:focus-visible, .tab:focus-visible, .link-btn:focus-visible, a:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.field label { color: var(--ink); font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+.field input, .field select, .field textarea, .filter-bar select, .filter-bar input, .reply-box textarea, .status-row select {
+  border: 2px solid var(--ink); border-radius: 4px; background: #fff; }
+.field input:focus, .field select:focus, .field textarea:focus, .reply-box textarea:focus { border-color: var(--ink); box-shadow: 3px 3px 0 var(--lilac); }
+.form-error { background: var(--pink); color: var(--ink); border: 2px solid var(--ink); border-radius: 4px; font-weight: 600; }
+.form-note { color: var(--ink-2); font-size: 12px; }
+
+.login-wrap { background: var(--lilac); }
+.login-card { background: var(--card); border: 2px solid var(--ink); border-radius: 4px; box-shadow: 8px 8px 0 var(--ink); }
+.login-card h1 { font-size: 30px; }
+.demo-hint { border-top: 2px dashed var(--ink); color: var(--ink); font-family: var(--mono); }
+.demo-hint code { background: var(--lime); border: 1px solid var(--ink); border-radius: 3px; }
+
+.card { background: var(--card); border: 2px solid var(--ink); border-radius: 4px; box-shadow: var(--shadow); }
+.chip { border-radius: 3px; border: 1.5px solid var(--ink); color: var(--ink); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; }
+.chip::before { display: none; }
+.chip-open { background: var(--card); }
+.chip-in_progress { background: var(--lilac); }
+.chip-answered { background: var(--lime); }
+.chip-resolved { background: #fff; color: var(--ink-2); border-style: dashed; }
+.course-tag { background: var(--ink); color: var(--card); border-radius: 3px; font-size: 11px; padding: 3px 7px; }
+.turn { border-radius: 3px; border: 1.5px solid var(--ink); font-size: 11.5px; padding: 2px 8px; }
+.turn-you { background: var(--lime); color: var(--ink); font-weight: 700; }
+.turn-them { background: transparent; color: var(--ink-2); font-weight: 500; border-style: dashed; }
+.doubt-row-you { background: var(--lilac); border-color: var(--ink); box-shadow: var(--shadow); }
+.doubt-title { font-size: 18px; }
+.doubt-snippet, .doubt-meta { color: var(--ink-2); }
+.doubt-row:hover { transform: none; box-shadow: none; }
+.doubt-card .doubt-row:hover { background: #fff; }
+.doubt-actions { border-top: 2px solid var(--ink); padding: 12px 20px; background: var(--paper); }
+
+.tabs { border-bottom: 2px solid var(--ink); gap: 4px; }
+.tab { color: var(--ink); border: 2px solid transparent; border-bottom: 0; border-radius: 4px 4px 0 0; font-weight: 800; margin-bottom: -2px; }
+.tab.is-active { background: var(--lime); border-color: var(--ink); color: var(--ink); }
+.tab-count { background: #fff; color: var(--ink); border: 1.5px solid var(--ink); border-radius: 3px; font-size: 11px; padding: 0 6px; }
+.tab.is-active .tab-count { background: var(--ink); color: var(--lime); }
+
+.turn-banner { border: 2px solid var(--ink); border-radius: 4px; font-size: 14px; }
+.turn-banner-you { background: var(--lime); color: var(--ink); }
+.turn-banner-them { background: var(--lilac); color: var(--ink); font-weight: 600; }
+.turn-banner-done { background: #fff; color: var(--ink-2); border-style: dashed; }
+.toast { background: var(--card); border: 2px solid var(--ink); border-radius: 4px; box-shadow: 3px 3px 0 var(--ink); }
+.toast-ok { background: var(--lime); color: var(--ink); }
+.back-link a, .resolved-link a { color: var(--ink); font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+
+.thread-head h2 { font-size: 26px; }
+.msg { border-radius: 4px; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.msg-mine.msg-from-educator, .msg-theirs.msg-from-educator { background: var(--lilac); color: var(--ink); border: 2px solid var(--ink); }
+.msg-mine:not(.msg-from-educator), .msg-theirs:not(.msg-from-educator) { background: #fff; border: 2px solid var(--ink); }
+.msg-who { opacity: 1; font-size: 11px; }
+.msg-time { opacity: 1; color: var(--ink-2); }
+.msg img, .thread-head img { border: 2px solid var(--ink); border-radius: 4px; }
+.code-block { background: var(--ink); color: var(--lime); border-radius: 4px; }
+.attach-btn { border: 2px dashed var(--ink); color: var(--ink); border-radius: 4px; }
+.attach-btn:hover { color: var(--ink); border-color: var(--ink); background: var(--lilac); }
+.attach-name { color: var(--ink); }
+.empty { border-style: solid; }
+
+/* ---------- work queue + answer reuse ---------- */
+.queue-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 0 0 14px; padding: 10px 14px;
+  background: var(--lilac); border: 2px solid var(--ink); border-radius: 4px; box-shadow: 3px 3px 0 var(--ink); }
+.queue-bar .back-inline { color: var(--ink); font-weight: 800; text-decoration: none; }
+.queue-next { flex: 1; min-width: 160px; font-size: 14px; }
+.send-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.similar { padding: 16px 18px; margin: 0 0 16px; background: #fff; }
+.similar-item { border-top: 2px solid var(--ink); margin-top: 12px; padding-top: 12px; }
+.similar-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.similar-answer { margin: 6px 0 10px; line-height: 1.5; font-size: 14.5px; }
+.similar-actions { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.draft-note { background: var(--pink); border: 2px solid var(--ink); border-radius: 4px; padding: 9px 12px; font-size: 13.5px; font-weight: 600; }
+
+@media (max-width: 640px) {
+  .page-title { font-size: 32px; }
+  .send-row .btn { flex: 1; }
+  .queue-bar .btn { flex: 1; }
 }

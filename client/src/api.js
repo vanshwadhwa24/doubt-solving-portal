@@ -25,6 +25,7 @@ export const api = {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
     return call(`/api/doubts${qs ? `?${qs}` : ''}`);
   },
+  similar: (id) => call(`/api/doubts/${id}/similar`),
   summary: () => call('/api/doubts/summary'),
   doubt: (id) => call(`/api/doubts/${id}`),
   createDoubt: (form) => call('/api/doubts', { method: 'POST', form }),

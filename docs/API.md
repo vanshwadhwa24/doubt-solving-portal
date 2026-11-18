@@ -25,6 +25,7 @@ Base URL: `/api`. Auth is a session cookie (`dd_session`, httpOnly) issued by lo
 | GET    | `/doubts/summary`   | educator | Counts `{open, in_progress, answered, resolved, unanswered}`. |
 | GET    | `/doubts/:id`       | owner/educator | `{doubt, messages, attachments}` - full conversation. |
 | POST   | `/doubts/:id/messages` | owner/educator | Multipart: `body`, optional `image`. Adds a reply. Educator replies mark the doubt `answered`; a student follow-up on `answered`/`resolved` reopens it to `in_progress`. |
+| GET    | `/doubts/:id/similar` | educator | Up to 3 earlier answered doubts in the same course that share search terms with this one: `{similar:[{id,title,status,answered_at,answer,scrubbed,answer_has_image,matched}]}`. Never includes student name or email; those are replaced by `[student]` / `[email]` inside `title` and `answer`. 403 for students, 404 unknown doubt. |
 | PATCH  | `/doubts/:id/messages/status` | any (own) | Body `{status}`. Educators: any status, except `answered` returns 409 unless the educator sent the last message. Students: only `resolved`, only on their own doubt (403 otherwise). |
 
 ## Attachments

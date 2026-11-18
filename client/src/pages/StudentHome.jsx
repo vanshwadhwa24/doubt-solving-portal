@@ -135,7 +135,7 @@ export function StudentHome() {
         <div>
           <h1 className="page-title">My doubts</h1>
           <p className="page-sub">
-            {yourTurn > 0 ? `${yourTurn} ${yourTurn === 1 ? 'doubt has' : 'doubts have'} a reply waiting for you.` : 'Ask, track, and keep the conversation going.'}
+            {yourTurn > 0 ? `${yourTurn} ${yourTurn === 1 ? 'doubt has' : 'doubts have'} a reply waiting for you.` : ''}
           </p>
         </div>
       </div>

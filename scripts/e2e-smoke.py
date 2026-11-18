@@ -35,7 +35,7 @@ async def main():
         await page.fill("textarea", "Dry run question body.")
         await page.set_input_files('input[type="file"]', NOTE_PNG)
         await page.click('button:has-text("Submit doubt")')
-        await page.wait_for_selector('text=Your educator will see it in their inbox', timeout=8000)
+        await page.wait_for_selector('text=Sent. The reply will appear', timeout=8000)
         print("ASSERT 1 OK: doubt created, student lands on the thread with a confirmation")
         await page.wait_for_selector('text=Dry run question body.', timeout=8000)
         assert await page.locator('.thread-head img').count() == 1, "image attachment missing"
@@ -45,7 +45,7 @@ async def main():
         # educator
         await login(page, "educator@doubtdesk.demo", "educator123")
         await page.goto(BASE + '/#/inbox')
-        await page.wait_for_selector('text=Doubt inbox', timeout=8000)
+        await page.wait_for_selector('text=Inbox', timeout=8000)
         await page.locator('input[placeholder*="earch"]').fill("parabola")
         await page.click('button:has-text("Search")')
         await page.wait_for_timeout(800)
@@ -55,7 +55,7 @@ async def main():
         await page.wait_for_selector('text=Dry run question body.', timeout=8000)
         print("ASSERT 3 OK: educator finds and opens the doubt")
         await page.fill("textarea", "Dry run educator answer.")
-        await page.click('button:has-text("Send answer")')
+        await page.click('.reply-box button[type=submit]')
         await page.wait_for_selector('text=Dry run educator answer.', timeout=8000)
         await page.click('button:has-text("Mark resolved")')
         await page.wait_for_selector('.thread-head .chip:has-text("Resolved")', timeout=8000)

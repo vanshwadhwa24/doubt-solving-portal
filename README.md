@@ -15,6 +15,8 @@ A centralized portal where students submit academic doubts and educators manage 
 
 **Educators**
 - Inbox tabs with live counts: Needs reply, Open, Ongoing, Answered, Resolved. Longest-waiting first, with the wait time shown
+- Work the queue: one button opens the longest-waiting doubt; Send & next answers it and opens the next; Skip defers one (skipped doubts return when the rest are done). Course and search filters carry into the queue
+- Earlier answers to similar doubts (same course only, educator only): Use as draft copies an answer into the reply box. It is never sent automatically, names and emails from the original are replaced with placeholders, and sending is blocked until the placeholders are edited out
 - One-click moves between Open and Ongoing (with Undo). The primary button is always the next step: reply when a reply is owed, otherwise move or resolve
 - Filter by course and status; free-text search over questions, replies and student names
 - Open a doubt to see the complete conversation history
@@ -72,21 +74,24 @@ npm run dev        # server on :4000, Vite dev server on :5173 (proxied)
 npm test
 ```
 
-Runs the API suite (19 tests) against a separate `doubt_portal_test` database (created from the same migrations; set `DATABASE_URL` to override).
+Runs the API suite (22 tests) against a separate `doubt_portal_test` database (created from the same migrations; set `DATABASE_URL` to override).
 
 ## E2E smoke test
 
 `scripts/e2e-smoke.py` drives a real browser through the whole loop (student submits a doubt with an image, educator searches/answers/sets status, student reads the answer) with assertions at each step. Requires Python + Playwright and a seeded app on :4000:
 
 ```bash
-python3 scripts/e2e-smoke.py
+python3 scripts/e2e-smoke.py       # core loop
+python3 scripts/e2e-journeys.py    # whose-turn, tabs, mobile, resolved page (fresh seed)
+python3 scripts/e2e-queue.py       # work queue and answer reuse (fresh seed)
+python3 scripts/measure-queue.py before|after   # clicks and route changes for the fixed queue task (fresh seed)
 ```
 
 ## Demo video
 
-`demo/demo.mp4` is a silent, captioned screen recording (no voiceover). About 3 minutes (177 s). The phone-width section plays in a 390px window inside the 1280x760 frame, so the rest of the frame is grey. It shows:
-1. Student home (active only), the Resolved page, asking a doubt with code and a screenshot, the confirmation
-2. Educator inbox: Needs reply first, Start working with Undo, Ongoing tab, thread banner, sending an answer
+`demo/demo.mp4` is a silent, captioned screen recording (no voiceover). About 3 minutes 20 seconds. The phone-width section is centred on a dark frame. It shows:
+1. Student home (active only), the Resolved page, asking a doubt with code and a screenshot
+2. Educator: Start working with Undo, Work the queue, Skip, similar earlier answer used as an editable draft, Send & next
 3. Student reads the reply, follows up; educator sees it back under Needs reply and answers; student marks it resolved and it leaves the home page
 4. Phone width (390px) for both roles
 5. Appendix: double-clicking Submit still creates one doubt

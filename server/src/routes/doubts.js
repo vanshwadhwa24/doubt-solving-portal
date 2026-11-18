@@ -164,6 +164,75 @@ doubtsRouter.get('/summary', requireRole('educator'), async (req, res, next) => 
   }
 });
 
+// ---- Earlier answers to similar doubts (educator only) -------------------------------------
+// Looks only inside the same course, only at doubts an educator already answered. Matching uses
+// Postgres full-text stemming per search term (no extra service). Nothing identifying is returned:
+// the student's name and email are never sent, and any occurrence of them inside the old text is
+// replaced with a placeholder the client refuses to send until the educator edits it out.
+const STOP = new Set(('this that with have from your what when where which would could should there their about into than then them they '
+  + 'does done just like make made more most much only over some such very will been being also each other these those while using used '
+  + 'help please question doubt understand explain why how not and the for are but can you why').split(/\s+/));
+
+export function searchTerms(text) {
+  const prose = String(text).replace(/```[\s\S]*?(```|$)/g, ' ').toLowerCase();
+  const words = prose.match(/[a-z][a-z0-9]{3,}/g) || [];
+  return [...new Set(words.filter((w) => !STOP.has(w)))].slice(0, 14);
+}
+
+export function scrubIdentity(text, name, email) {
+  let out = String(text);
+  const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (email) out = out.replace(new RegExp(esc(email), 'gi'), '[email]');
+  const parts = String(name || '').split(/\s+/).filter((p) => p.length >= 3 && !/^(email)$/i.test(p));
+  if (name && String(name).trim()) {
+    // One pass, full name first, so a placeholder is never re-scanned.
+    const alt = [String(name).trim(), ...parts].map(esc).join('|');
+    out = out.replace(new RegExp(`\\b(?:${alt})\\b`, 'gi'), '[student]');
+  }
+  return out;
+}
+
+doubtsRouter.get('/:id/similar', requireRole('educator'), async (req, res, next) => {
+  try {
+    const cur = await pool.query('SELECT id, course_id, title, description FROM doubts WHERE id = $1', [req.params.id]);
+    if (!cur.rows[0]) return res.status(404).json({ error: 'doubt not found' });
+    const terms = searchTerms(`${cur.rows[0].title} ${cur.rows[0].description}`);
+    if (terms.length < 2) return res.json({ similar: [] });
+    const { rows } = await pool.query(
+      `SELECT d.id, d.title, d.status, d.created_at, u.name AS student_name, u.email AS student_email,
+              ans.id AS answer_id, ans.body AS answer, ans.created_at AS answered_at,
+              EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = ans.id) AS answer_has_image,
+              (SELECT count(*) FROM unnest($3::text[]) t
+                WHERE to_tsvector('english', d.title || ' ' || d.description) @@ plainto_tsquery('english', t))::int AS matched
+         FROM doubts d
+         JOIN users u ON u.id = d.student_id
+         JOIN LATERAL (
+           SELECT m.id, m.body, m.created_at FROM messages m JOIN users eu ON eu.id = m.sender_id
+            WHERE m.doubt_id = d.id AND eu.role = 'educator' AND m.body <> '(image)'
+            ORDER BY m.created_at DESC, m.id DESC LIMIT 1
+         ) ans ON true
+        WHERE d.course_id = $1 AND d.id <> $2
+        ORDER BY matched DESC, ans.created_at DESC
+        LIMIT 60`,
+      [cur.rows[0].course_id, cur.rows[0].id, terms],
+    );
+    const need = Math.max(2, Math.ceil(terms.length * 0.25));
+    const similar = rows.filter((r) => r.matched >= need).slice(0, 3).map((r) => ({
+      id: r.id,
+      title: scrubIdentity(r.title, r.student_name, r.student_email),
+      status: r.status,
+      answered_at: r.answered_at,
+      answer: scrubIdentity(r.answer, r.student_name, r.student_email),
+      scrubbed: scrubIdentity(r.answer, r.student_name, r.student_email) !== r.answer,
+      answer_has_image: r.answer_has_image,
+      matched: r.matched,
+    }));
+    res.json({ similar });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // One doubt with its full conversation. Owner student or any educator.
 doubtsRouter.get('/:id', requireAuth, async (req, res, next) => {
   try {

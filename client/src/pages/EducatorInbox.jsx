@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { StatusChip, CourseTag, timeAgo, Empty, TurnBadge, excerpt } from '../components/bits.jsx';
 
@@ -29,6 +29,8 @@ const EMPTY_TEXT = {
 
 export function EducatorInbox() {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
+  const cleared = params.get('cleared') === '1';
   const tab = TABS.some((t) => t[0] === params.get('tab')) ? params.get('tab') : 'needs';
   const courseId = params.get('course') || '';
   const search = params.get('q') || '';
@@ -82,9 +84,16 @@ export function EducatorInbox() {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Doubt inbox</h1>
-          <p className="page-sub">Longest-waiting doubts first. Refreshes automatically.</p>
+          <h1 className="page-title">Inbox</h1>
         </div>
+        {tab === 'needs' && doubts && doubts.length > 0 && (
+          <button className="btn" onClick={() => {
+            const qs = new URLSearchParams();
+            if (courseId) qs.set('course', courseId);
+            if (search) qs.set('q', search);
+            navigate(`/doubt/${doubts[0].id}${qs.toString() ? `?${qs}` : ''}`);
+          }}>Work the queue · {doubts.length}</button>
+        )}
       </div>
 
       <div className="tabs" role="tablist">
@@ -110,6 +119,7 @@ export function EducatorInbox() {
         )}
       </div>
 
+      {cleared && tab === 'needs' && <div className="toast toast-ok" role="status">Queue clear. Nothing is waiting on you.</div>}
       {moved && (
         <div className="toast" role="status">
           Moved "{moved.title.length > 50 ? `${moved.title.slice(0, 50)}...` : moved.title}" to {STATUS_NAME[moved.to]}.

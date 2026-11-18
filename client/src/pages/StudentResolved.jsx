@@ -13,7 +13,7 @@ export function StudentResolved() {
         <div>
           <p className="back-link"><Link to="/">← My doubts</Link></p>
           <h1 className="page-title">Resolved doubts</h1>
-          <p className="page-sub">Kept for reference. Send a follow-up in any of them to reopen it.</p>
+          <p className="page-sub">A follow-up reopens a doubt.</p>
         </div>
       </div>
       {doubts === null ? <div className="loading-line">Loading…</div> :

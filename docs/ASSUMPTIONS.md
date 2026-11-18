@@ -28,6 +28,14 @@
 - Migration `002_status_follows_turn.sql` repairs older rows that said Answered while the student had the last word. It changes status only; message history is untouched.
 - Wait time is measured from the last student message (or the doubt's creation).
 
+## Work queue and answer reuse
+
+- **Queue** = doubts where the educator owes a reply, longest wait first, optionally within the current course/search filter. Send & next answers and opens the next one. Skip is remembered in the URL; when only skipped doubts remain the queue wraps back to them, so "Queue clear" is shown only when nothing needs a reply.
+- **Measured effect** (fixed task: educator signed in, Needs reply loaded, answer every waiting doubt with a one-line answer; `scripts/measure-queue.py`, 3 doubts, clicks counted by a capture-phase listener, route changes by history pushes, run on seeded data): without the queue 9 clicks and 6 route changes; with the queue 4 clicks and 4 route changes. Per doubt that is 3 clicks and 2 route changes against 1 click and 1 route change (plus a fixed 1 click and 1 route change to start the queue and 1 route change to finish). Typing is identical in both (3 entries). This is a navigation measurement on a small seed, not a measurement of real educators or time saved.
+- **Similar answers** use Postgres full-text stemming: the new doubt's distinctive words (no code, short words or common words, at most 14) are each tested against earlier doubts in the same course that already have an educator reply. A match needs at least 2 shared words and at least a quarter of the words. Hypothesis, not validated: relevance on real data is untested beyond the fixtures in `server/test/similar.test.js`, and the check runs over the course's doubts per request, so a real deployment needs a GIN index or precomputed vectors.
+- **Privacy:** only educators can call it. The student's name and email never leave the server for a suggestion. Any occurrence of the original student's name or email inside the old title or answer is replaced with `[student]` / `[email]`. The client refuses to send while a placeholder is in the box. Details that are not names (numbers, references to the student's own code) are not detected, so the draft carries a warning to check them. Images in the old answer are not copied.
+- Nothing is sent automatically. Other students' doubts are never shown to students.
+
 ## UI behaviour
 
 - Student home lists active doubts only; resolved ones are at `#/resolved`. Students may resolve their own doubt; an educator can reopen.
@@ -36,6 +44,7 @@
 
 ## Known limitations
 
+- Visual language (cream, black borders, hard shadows, lilac/lime) is adapted from a reference clip supplied by the product owner; system fonts only, no new dependencies.
 - Telegram has not been tested against a real bot; phone testing used a 390px browser viewport, not a device. No accessibility audit or load test.
 
 - No rate limiting or CAPTCHA on login (would be required before a public deployment).

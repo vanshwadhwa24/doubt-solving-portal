@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
-import { StatusChip, CourseTag, timeAgo, AttachmentImages, RichText, Empty, waitLabel } from '../components/bits.jsx';
+import { StatusChip, CourseTag, timeAgo, AttachmentImages, RichText, Empty, waitLabel, excerpt } from '../components/bits.jsx';
 
 const STATUS_NAME = { open: 'Open', in_progress: 'Ongoing', answered: 'Answered', resolved: 'Resolved' };
 
@@ -19,7 +19,7 @@ function TurnBanner({ doubt, messages, isEducator }) {
       : <div className="turn-banner turn-banner-them">Waiting for the student to reply.</div>;
   }
   return educatorTurn
-    ? <div className="turn-banner turn-banner-them">With your educator. Replies appear here by themselves.</div>
+    ? <div className="turn-banner turn-banner-them">With your educator.</div>
     : <div className="turn-banner turn-banner-you">Your educator replied - your turn.</div>;
 }
 
@@ -36,6 +36,12 @@ export function DoubtThread() {
   const fileRef = useRef(null);
   const bottomRef = useRef(null);
   const sentBanner = search.get('sent') === '1';
+  const navigate = useNavigate();
+  const [queue, setQueue] = useState([]);       // educator: doubts waiting on a reply, longest wait first
+  const [similar, setSimilar] = useState([]);   // educator: earlier answers to similar doubts, same course
+  const [draftFrom, setDraftFrom] = useState(null);
+  const skipped = (search.get('skip') || '').split(',').filter(Boolean);
+  const queueFilters = { needs_reply: '1', course_id: search.get('course') || '', q: search.get('q') || '' };
 
   async function refresh(initial = false) {
     try {
@@ -53,10 +59,43 @@ export function DoubtThread() {
     const timer = setInterval(() => { if (!document.hidden) refresh(); }, 10000);
     return () => clearInterval(timer);
   }, [id]);
+  const isEducatorRole = user.role === 'educator';
+  useEffect(() => {
+    setSimilar([]); setDraftFrom(null);
+    if (!isEducatorRole) return;
+    api.similar(id).then((r) => setSimilar(r.similar)).catch(() => {});
+  }, [id]);
+  useEffect(() => {
+    if (!isEducatorRole) return;
+    api.inbox(queueFilters).then((r) => setQueue(r.doubts)).catch(() => {});
+  }, [id, data?.doubt?.needs_educator]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [data?.messages?.length]);
 
-  async function send(e) {
-    e.preventDefault();
+  // Next = longest-waiting doubt not skipped. When only skipped ones are left, wrap round to them
+  // (and forget the skips) so "queue clear" is never shown while something still needs a reply.
+  function pickNext(list) {
+    const others = list.filter((d) => String(d.id) !== String(id));
+    const fresh = others.find((d) => !skipped.includes(String(d.id)));
+    return fresh ? { d: fresh, wrapped: false } : others[0] ? { d: others[0], wrapped: true } : null;
+  }
+  const upNext = pickNext(queue);
+  const nextUp = upNext?.d;
+  function goTo(d, extraSkip, clear = false) {
+    const next = new URLSearchParams();
+    for (const k of ['course', 'q']) if (search.get(k)) next.set(k, search.get(k));
+    const sk = clear ? [] : extraSkip ? [...skipped, extraSkip] : skipped;
+    if (sk.length) next.set('skip', sk.join(','));
+    const qs = next.toString();
+    navigate(`/doubt/${d.id}${qs ? `?${qs}` : ''}`);
+  }
+  function skip() { if (nextUp) goTo(nextUp, id, upNext.wrapped); }
+
+  async function send(e, andNext = false) {
+    e?.preventDefault();
+    if (/\[(student|email)\]/i.test(body)) {
+      setSendError('Replace [student] or [email] in the draft before sending. They stand for details from an earlier doubt.');
+      return;
+    }
     setBusy(true);
     setSendError('');
     try {
@@ -64,8 +103,14 @@ export function DoubtThread() {
       form.set('body', body);
       if (image) form.set('image', image);
       await api.reply(id, form);
-      setBody(''); setImage(null);
+      setBody(''); setImage(null); setDraftFrom(null);
       if (sentBanner) setSearch({}, { replace: true });
+      if (andNext) {
+        // The doubt just answered has left the queue; take the longest-waiting one that is left.
+        const left = pickNext((await api.inbox(queueFilters)).doubts);
+        if (left) { goTo(left.d, null, left.wrapped); return; }
+        navigate('/inbox?cleared=1'); return;
+      }
       await refresh();
     } catch (err) {
       setSendError(`Could not send - your message is still here. ${err.message}`);
@@ -102,9 +147,18 @@ export function DoubtThread() {
 
   return (
     <>
-      <p className="back-link"><Link to={backTo}>← {isEducator ? 'Inbox' : 'My doubts'}</Link></p>
+      {isEducator && owes ? (
+        <div className="queue-bar">
+          <Link to={backTo} className="back-inline">← Inbox</Link>
+          <span className="mono">Queue · {queue.length} waiting{skipped.length ? ` · ${skipped.filter((x) => queue.some((d) => String(d.id) === x)).length} skipped` : ''}</span>
+          <span className="queue-next">{nextUp ? <>Next: <strong>{nextUp.title.length > 46 ? `${nextUp.title.slice(0, 46)}...` : nextUp.title}</strong></> : 'Last one'}</span>
+          {nextUp && <button type="button" className="btn btn-small btn-ghost" onClick={skip}>Skip</button>}
+        </div>
+      ) : (
+        <p className="back-link"><Link to={backTo}>← {isEducator ? 'Inbox' : 'My doubts'}</Link></p>
+      )}
       {sentBanner && !isEducator && (
-        <div className="toast toast-ok" role="status">Sent. Your educator will see it in their inbox, and their reply will show up on this page.</div>
+        <div className="toast toast-ok" role="status">Sent. The reply will appear on this page.</div>
       )}
       <div className="card thread-head">
         <div className="thread-meta">
@@ -128,7 +182,7 @@ export function DoubtThread() {
 
       <div className="msg-list">
         {messages.length === 0 && <div className="form-note" style={{ textAlign: 'center' }}>
-          No replies yet - {isEducator ? 'be the first to respond.' : 'your educator has not replied yet.'}
+          No replies yet.
         </div>}
         {messages.map((m) => {
           const mine = String(m.sender_id) === String(user.id);
@@ -144,10 +198,37 @@ export function DoubtThread() {
         <div ref={bottomRef} />
       </div>
 
+      {isEducator && owes && similar.length > 0 && (
+        <section className="card similar" aria-label="Earlier answers to similar doubts">
+          <div className="mono">Earlier answers to similar doubts · this course only</div>
+          {similar.map((s) => (
+            <div key={s.id} className="similar-item">
+              <div className="similar-head">
+                <strong>{s.title}</strong>
+                <span className="form-note">answered {timeAgo(s.answered_at)}</span>
+              </div>
+              <p className="similar-answer">{excerpt(s.answer, 260)}</p>
+              <div className="similar-actions">
+                <button type="button" className="btn btn-small btn-ghost"
+                  onClick={() => { setBody((b) => (b.trim() ? `${b.trim()}\n\n${s.answer}` : s.answer)); setDraftFrom(s); }}>Use as draft</button>
+                <Link className="link-btn" to={`/doubt/${s.id}`} target="_blank" rel="noreferrer">Open original</Link>
+                {s.answer_has_image && <span className="form-note">original answer had an image (not copied)</span>}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
       <form className="card reply-box" onSubmit={send}>
         {sendError && <div className="form-error">{sendError}</div>}
         <textarea value={body} onChange={(e) => setBody(e.target.value)} aria-label="Reply"
           placeholder={isEducator ? 'Write your answer… (wrap code in ``` fences)' : 'Add a follow-up…'} />
+        {draftFrom && (
+          <div className="draft-note" role="status">
+            Draft copied from an earlier answer to a different student. Check names, numbers and references before sending.
+            {draftFrom.scrubbed && ' Their name or email was replaced with a placeholder you must edit.'}
+          </div>
+        )}
         <div className="reply-actions">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button type="button" className="attach-btn" onClick={() => fileRef.current?.click()}>Attach an image</button>
@@ -156,9 +237,18 @@ export function DoubtThread() {
               onChange={(e) => setImage(e.target.files?.[0] || null)} />
           </div>
           <div className="send-col">
-            <button className="btn" type="submit" disabled={busy || (!body.trim() && !image)}>
-              {busy ? 'Sending…' : isEducator ? 'Send answer' : 'Send'}
-            </button>
+            {isEducator && owes ? (
+              <div className="send-row">
+                <button className="btn btn-ghost" type="submit" disabled={busy || (!body.trim() && !image)}>Send</button>
+                <button className="btn" type="button" disabled={busy || (!body.trim() && !image)} onClick={() => send(null, true)}>
+                  {busy ? 'Sending…' : nextUp ? 'Send & next' : 'Send & finish'}
+                </button>
+              </div>
+            ) : (
+              <button className="btn" type="submit" disabled={busy || (!body.trim() && !image)}>
+                {busy ? 'Sending…' : isEducator ? 'Send answer' : 'Send'}
+              </button>
+            )}
             {isEducator && doubt.status !== 'resolved' && <span className="form-note">Marks this Answered</span>}
             {!isEducator && doubt.status === 'resolved' && <span className="form-note">Reopens this doubt</span>}
           </div>
