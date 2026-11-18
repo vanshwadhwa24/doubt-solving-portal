@@ -1,4 +1,4 @@
-"""Records the silent demo walkthrough (demo.mp4) against a seeded app on :4000.
+"""Records the silent demo walkthrough (about 7 minutes, incl. Telegram section; needs node for scripts/fake-telegram.mjs) (demo.mp4) against a seeded app on :4000.
 Usage: npm run seed && npm start (other shell) && python3 scripts/record-demo.py
 Set PW_CHANNEL=chrome to use an installed Chrome. Writes DEMO_OUT/demo.mp4 (needs ffmpeg with libx264)."""
 import asyncio, base64, os, tempfile, shutil
@@ -32,13 +32,28 @@ async def login(page, email, pw, who):
 async def logout(page):
     await page.evaluate(CAP_JS, ""); await page.click("text=Sign out"); await page.wait_for_selector("#email")
 
-def assemble(v1, v2, v3):
+def assemble(parts):
+    # parts: [(path, is_phone)] in play order. Phone-width clips are centred on a dark frame.
     import subprocess
     out = os.path.join(OUT, "demo.mp4")
-    f = ("[0:v]scale=1280:760,setsar=1[a];[1:v]scale=-2:760,pad=1280:760:(ow-iw)/2:0:color=0x23201a,setsar=1[b];"
-         "[2:v]scale=1280:760,setsar=1[c];[a][b][c]concat=n=3:v=1:a=0[v]")
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", v1, "-i", v2, "-i", v3, "-filter_complex", f,
-                    "-map", "[v]", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out], check=True)
+    chains = []
+    for i, (_, phone) in enumerate(parts):
+        chains.append(f"[{i}:v]scale=-2:760,pad=1280:760:(ow-iw)/2:0:color=0x23201a,setsar=1[v{i}]" if phone
+                      else f"[{i}:v]scale=1280:760,setsar=1[v{i}]")
+    f = ";".join(chains) + ";" + "".join(f"[v{i}]" for i in range(len(parts))) + f"concat=n={len(parts)}:v=1:a=0[v]"
+    args = ["ffmpeg", "-y", "-loglevel", "error"]
+    for path, _ in parts: args += ["-i", path]
+    subprocess.run(args + ["-filter_complex", f, "-map", "[v]", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out], check=True)
+
+CSS = ("body{margin:0;background:#f3ecdc;color:#23201a;font:20px/1.5 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh}"
+       ".s{width:980px;border:3px solid #23201a;background:#fff;box-shadow:8px 8px 0 #23201a;padding:36px 44px}"
+       "h1{margin:0 0 14px;font-size:40px}h2{margin:0 0 12px;font-size:30px}li{margin:6px 0}code{background:#e9e2fb;padding:1px 6px}"
+       ".tag{display:inline-block;background:#c8f169;border:2px solid #23201a;padding:2px 10px;font-weight:700;margin-bottom:12px}"
+       "table{border-collapse:collapse;width:100%;font-size:18px}td,th{border:1px solid #23201a;padding:4px 10px;text-align:left}")
+
+async def slide(page, html, secs):
+    await page.set_content(f"<style>{CSS}</style><div class=s>{html}</div>")
+    await page.wait_for_timeout(int(secs * 1000))
 
 async def main():
     shutil.rmtree(OUT, ignore_errors=True)
@@ -46,6 +61,9 @@ async def main():
         b = await p.chromium.launch(channel=os.environ.get("PW_CHANNEL") or None)
         ctx = await b.new_context(viewport={"width": 1280, "height": 760}, record_video_dir=OUT, record_video_size={"width": 1280, "height": 760})
         page = await ctx.new_page()
+
+        await slide(page, "<span class=tag>DoubtDesk</span><h1>A doubt portal for students and educators</h1><p>Doubts now get buried in WhatsApp and Telegram groups. Educators cannot see what is unanswered, students cannot see whether anyone looked.</p><p><b>This demo follows one doubt from question to resolved</b>, then shows the Telegram bridge, phone width, and what is under the hood.</p>", 14)
+        await slide(page, "<span class=tag>What you will see</span><h2>The full workflow</h2><ol><li>Student asks a doubt with code and a screenshot</li><li>Educator inbox: Needs reply, longest wait first</li><li>Work queue, similar earlier answers as an editable draft</li><li>Reply, follow-up, resolve, with the turn shown at every step</li><li>Telegram: link, ask, follow-up, photo, answer delivered back</li><li>Phone width, duplicate-submit protection, tests, schema, scale</li></ol>", 16)
 
         # 1. Student home
         await login(page, "aarav@doubtdesk.demo", "student123", "a student (Aarav)")
@@ -140,8 +158,60 @@ async def main():
         n = await page.locator(".doubt-row", has_text="derivative of ln").count()
         await cap(page, f"Sara's list shows {n} copy of the doubt.", 5)
         await logout(page)
-        v3 = await page.video.path(); await ctx.close(); await b.close()
-    assemble(v1, v2, v3)
+        v3 = await page.video.path(); await ctx.close()
+
+        # 7. Telegram bridge against a local fake of the Bot API (no real bot)
+        import subprocess, time
+        fake = subprocess.Popen(["node", "scripts/fake-telegram.mjs", "4100", NOTE], stdout=subprocess.DEVNULL)
+        env = dict(os.environ, PORT="4001", TELEGRAM_BOT_TOKEN="demo", TELEGRAM_API_BASE="http://localhost:4100",
+                   TELEGRAM_DEFAULT_COURSE="CS301", UPLOAD_DIR=os.environ.get("UPLOAD_DIR", "server/uploads"))
+        app2 = subprocess.Popen(["node", "server/src/index.js"], env=env, stdout=subprocess.DEVNULL)
+        time.sleep(3)
+        try:
+            global BASE
+            BASE = "http://localhost:4001"
+            ctx = await b.new_context(viewport={"width": 1280, "height": 760}, record_video_dir=OUT, record_video_size={"width": 1280, "height": 760})
+            page = await ctx.new_page()
+            await slide(page, "<span class=tag>Bonus</span><h2>Telegram bridge</h2><p>The next part uses a <b>local fake of the Telegram Bot API</b>, not a real bot. The bridge code is the real one: it polls, saves images, links chats and sends replies the same way.</p><ul><li>Student links their chat with a one-time code</li><li>Text and photos become a doubt; follow-ups join the same doubt</li><li>The educator answers in the portal; the answer goes back to the chat</li></ul>", 12)
+            await login(page, "aarav@doubtdesk.demo", "student123", "the student (Aarav)")
+            await cap(page, "Telegram is enabled, so the student home offers Connect Telegram.", 4)
+            await page.click("button:has-text('Connect Telegram')"); await page.wait_for_selector("code")
+            code = (await page.locator("code").first.inner_text()).replace("/start", "").strip()
+            await cap(page, "A one-time code, valid 15 minutes. The student sends it to the bot.", 5)
+            await page.goto("http://localhost:4100/__chat"); await page.wait_for_selector("#t")
+            await cap(page, "Before linking, the bot knows nobody. Sending a question first:", 3)
+            await page.type("#t", "why does my loop never end?", delay=40); await page.keyboard.press("Enter")
+            await page.wait_for_selector("text=not connected"); await cap(page, "It refuses and explains how to connect. Nothing is created.", 5)
+            await page.type("#t", f"/start {code}", delay=40); await page.keyboard.press("Enter")
+            await page.wait_for_selector("text=Connected as"); await cap(page, "Linked to the student's account.", 4)
+            await page.type("#t", "Why is the time complexity of merge sort n log n?", delay=35); await page.keyboard.press("Enter")
+            await page.wait_for_selector("text=posted as doubt"); await cap(page, "The message became a doubt.", 4)
+            await page.type("#t", "I already know it halves each time", delay=35); await page.keyboard.press("Enter")
+            await page.wait_for_selector("text=Added to doubt"); await cap(page, "A follow-up joins the same doubt instead of starting a new one.", 5)
+            await page.type("#t", "my recursion tree sketch", delay=35); await page.click("#p")
+            await page.wait_for_function("document.querySelectorAll('.bot').length >= 4"); await cap(page, "Photos work too, with a caption.", 5)
+            await page.goto(BASE); await page.wait_for_selector(".topbar"); await page.wait_for_timeout(500)
+            await logout(page)
+            await login(page, "educator@doubtdesk.demo", "educator123", "the educator")
+            await page.locator(".doubt-card a", has_text="merge sort").first.click(); await page.wait_for_selector(".thread-head")
+            await cap(page, "The educator sees the Telegram question, the follow-up and the photo in one thread.", 7)
+            await page.type(".reply-box textarea", "Each level does n work and there are log n levels.", delay=25)
+            await page.click(".reply-box button[type=submit]"); await page.wait_for_timeout(1500)
+            await cap(page, "Reply sent from the dashboard.", 3)
+            await page.goto("http://localhost:4100/__chat"); await page.wait_for_selector("text=Answer from")
+            await cap(page, "The answer arrives in the student's Telegram chat.", 6)
+            await page.goto(BASE); await page.wait_for_selector(".topbar"); await logout(page)
+
+            # 8. Under the hood
+            await slide(page, "<span class=tag>Data model</span><h2>Database: 8 tables, PostgreSQL</h2><table><tr><th>Table</th><th>Purpose</th></tr><tr><td>users, sessions</td><td>Student/educator roles; hashed tokens</td></tr><tr><td>courses, doubts</td><td>Doubt per student and course; status; idempotency key</td></tr><tr><td>messages, attachments</td><td>Ordered thread; images on a doubt or a message</td></tr><tr><td>telegram_link_codes, telegram_updates</td><td>Chat linking; each bot update handled once</td></tr></table><p>Full ER diagram: <code>docs/SCHEMA.md</code>. API: <code>docs/API.md</code>, <code>docs/openapi.yaml</code>.</p>", 16)
+            await slide(page, "<span class=tag>Engineering</span><h2>Access control, errors, duplicates</h2><ul><li>Students see only their own doubts; educator-only routes return 403</li><li>Retried submissions create one doubt (idempotency token)</li><li>Telegram redeliveries and restarts never double-post</li><li>Images: type and size checked, access checked per file</li><li>JSON errors with fitting codes; no stack traces to clients</li></ul>", 14)
+            await slide(page, "<span class=tag>Evidence</span><h2>Tests and volume</h2><ul><li>31 API tests, 23 browser checks on the queue, plus smoke and journey scripts and a Telegram end-to-end run</li><li>With 20,000 doubts: inbox lists 0.03 to 0.22 s, search over all 20,000 in 0.22 s (one machine, one request at a time)</li><li>Inbox is capped at 200 rows and says how many more match</li></ul>", 14)
+            await slide(page, "<span class=tag>Honest limits</span><h2>What is not done</h2><ul><li>Telegram was run against a fake Bot API, not a real bot</li><li>Real-device phone, accessibility and concurrent-load tests not done</li><li>Search is ILIKE; polling not websockets; no email notifications</li><li>Details: <code>docs/ASSUMPTIONS.md</code></li></ul>", 14)
+            v4 = await page.video.path(); await ctx.close()
+        finally:
+            app2.kill(); fake.kill()
+        await b.close()
+    assemble([(v1, False), (v2, True), (v3, False), (v4, False)])
     print("recorded to", OUT)
 
 asyncio.run(main())

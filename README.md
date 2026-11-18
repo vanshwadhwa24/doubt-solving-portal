@@ -98,14 +98,16 @@ Without a token the bot is off and nothing else changes. To test without a real 
 
 ## Demo video
 
-`demo/demo.mp4` is a silent, captioned screen recording (no voiceover). About 3 minutes 20 seconds. The phone-width section is centred on a dark frame. It shows:
-1. Student home (active only), the Resolved page, asking a doubt with code and a screenshot
-2. Educator: Start working with Undo, Work the queue, Skip, similar earlier answer used as an editable draft, Send & next
-3. Student reads the reply, follows up; educator sees it back under Needs reply and answers; student marks it resolved and it leaves the home page
-4. Phone width (390px) for both roles
-5. Appendix: double-clicking Submit still creates one doubt
+`demo/demo.mp4` is a silent, captioned screen recording (no voiceover), about 6 minutes 30 seconds. It shows:
+1. Intro: the problem and the workflow
+2. Student home (active only), the Resolved page, asking a doubt with code and a screenshot
+3. Educator: Start working with Undo, Work the queue, Skip, similar earlier answer used as an editable draft, Send & next
+4. Student reads the reply, follows up; educator sees it back under Needs reply and answers; student marks it resolved and it leaves the home page
+5. Phone width (390px) for both roles; double-clicking Submit still creates one doubt
+6. Telegram bridge: link code, refusal before linking, doubt created, follow-up joins it, photo, educator reply delivered back. This part runs against a local fake of the Telegram Bot API, not a real bot, and says so on screen
+7. Slides: data model, access control and duplicate handling, tests and 20,000-doubt timings, known limits
 
-Re-record with `python3 scripts/record-demo.py` against a freshly seeded app (see the script header).
+Re-record with `python3 scripts/record-demo.py` against a freshly seeded app (see the script header). The Telegram part starts `scripts/fake-telegram.mjs` and a second app instance on :4001 by itself; the full recording takes about 8 minutes.
 
 ## Configuration
 
