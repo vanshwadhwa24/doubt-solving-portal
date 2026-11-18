@@ -19,11 +19,11 @@ export function CourseTag({ code }) {
 export function timeAgo(iso) {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 60) return `${mins} ${mins === 1 ? 'minute' : 'minutes'} ago`;
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} h ago`;
+  if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
   const days = Math.round(hours / 24);
-  return `${days} d ago`;
+  return `${days} ${days === 1 ? 'day' : 'days'} ago`;
 }
 
 export function AttachmentImages({ attachments, messageId = undefined }) {
@@ -71,11 +71,12 @@ export function TurnBadge({ doubt, role }) {
 
 export function waitLabel(iso) {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min`;
+  if (mins < 1) return 'under a minute';
+  if (mins < 60) return `${mins} ${mins === 1 ? 'minute' : 'minutes'}`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} h`;
-  return `${Math.floor(hours / 24)} d`;
+  if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  const days = Math.floor(hours / 24);
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
 }
 
 // Short plain-text preview: code blocks become "[code]" so lists stay readable.

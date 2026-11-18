@@ -1,6 +1,6 @@
-"""Records the silent demo walkthrough (demo/demo.webm) against a seeded app on :4000.
+"""Records the silent demo walkthrough (demo.mp4) against a seeded app on :4000.
 Usage: npm run seed && npm start (other shell) && python3 scripts/record-demo.py
-Set PW_CHANNEL=chrome to use an installed Chrome. Convert with: ffmpeg -i demo.webm -c:v libx264 -pix_fmt yuv420p demo.mp4"""
+Set PW_CHANNEL=chrome to use an installed Chrome. Writes DEMO_OUT/demo.mp4 (needs ffmpeg with libx264)."""
 import asyncio, base64, os, tempfile, shutil
 from playwright.async_api import async_playwright
 BASE = "http://localhost:4000"
@@ -13,9 +13,11 @@ try:
 except Exception:
     open(NOTE, "wb").write(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))
 
-CAP_JS = """(t)=>{let c=document.getElementById('__cap');if(!c){c=document.createElement('div');c.id='__cap';
-c.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);max-width:86%;background:rgba(35,32,26,.92);color:#fff;font:600 17px/1.4 system-ui,sans-serif;padding:10px 18px;border-radius:12px;z-index:99999;text-align:center;pointer-events:none';document.body.appendChild(c);}
-c.textContent=t;c.style.display=t?'block':'none';}"""
+CAP_JS = """(t)=>{
+if(!document.getElementById('__capstyle')){const st=document.createElement('style');st.id='__capstyle';
+st.textContent='html{overflow:hidden!important}body{height:calc(100vh - 72px)!important;overflow:auto!important}#__cap{position:fixed;left:0;right:0;bottom:0;height:72px;box-sizing:border-box;background:#23201a;color:#fff;font:600 16px/1.35 system-ui,sans-serif;padding:8px 16px;display:flex;align-items:center;justify-content:center;text-align:center;z-index:99999;pointer-events:none}';
+document.head.appendChild(st);const c=document.createElement('div');c.id='__cap';document.documentElement.appendChild(c);}
+document.getElementById('__cap').textContent=t;}"""
 
 async def cap(page, text, secs=3.5):
     await page.evaluate(CAP_JS, text)
@@ -29,6 +31,14 @@ async def login(page, email, pw, who):
 
 async def logout(page):
     await page.evaluate(CAP_JS, ""); await page.click("text=Sign out"); await page.wait_for_selector("#email")
+
+def assemble(v1, v2, v3):
+    import subprocess
+    out = os.path.join(OUT, "demo.mp4")
+    f = ("[0:v]scale=1280:760,setsar=1[a];[1:v]scale=-2:760,pad=1280:760:(ow-iw)/2:0:color=0x23201a,setsar=1[b];"
+         "[2:v]scale=1280:760,setsar=1[c];[a][b][c]concat=n=3:v=1:a=0[v]")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", v1, "-i", v2, "-i", v3, "-filter_complex", f,
+                    "-map", "[v]", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out], check=True)
 
 async def main():
     shutil.rmtree(OUT, ignore_errors=True)
@@ -95,18 +105,24 @@ async def main():
         await page.click(".back-link a"); await page.wait_for_selector(".page-title"); await page.wait_for_timeout(800)
         await cap(page, "Resolved doubts leave the active home. The educator sees it under Resolved.", 5)
 
-        # 5. Phone width
-        await cap(page, "Phone width (390px): same journeys, bigger tap targets, all tabs visible.", 3)
-        await page.set_viewport_size({"width": 390, "height": 844}); await page.wait_for_timeout(1200)
-        await page.reload(); await page.wait_for_selector(".page-title"); await cap(page, "Student home on a phone.", 4)
-        await logout(page)
-        await login(page, "educator@doubtdesk.demo", "educator123", "the educator on a phone")
-        await cap(page, "Educator inbox on a phone: five tabs, reply and move buttons full width.", 6)
-        await page.locator(".doubt-card a").first.click(); await page.wait_for_selector(".thread-head")
-        await page.evaluate("window.scrollTo(0, 400)"); await cap(page, "Thread with an attached image fits the screen; header stays put.", 5)
-        await logout(page)
-        await page.set_viewport_size({"width": 1280, "height": 760}); await page.wait_for_timeout(800)
+        v1 = await page.video.path(); await ctx.close()
 
+        # 5. Phone width (own 390x844 recording, centred on a dark frame when assembled)
+        ctx = await b.new_context(viewport={"width": 390, "height": 844}, record_video_dir=OUT, record_video_size={"width": 390, "height": 844})
+        page = await ctx.new_page()
+        await login(page, "aarav@doubtdesk.demo", "student123", "the student, on a phone")
+        await cap(page, "Student home on a phone: active doubts only, turn cue on each.", 5)
+        await logout(page)
+        await login(page, "educator@doubtdesk.demo", "educator123", "the educator, on a phone")
+        await cap(page, "Educator inbox: all five tabs visible, big tap targets.", 6)
+        await page.locator(".doubt-card a").first.click(); await page.wait_for_selector(".thread-head")
+        await cap(page, "Thread: header stays at the top while scrolling.", 3)
+        await page.evaluate("document.body.scrollTo(0, 400)"); await cap(page, "Scrolled: no overlap, image fits.", 5)
+        await logout(page)
+        v2 = await page.video.path(); await ctx.close()
+
+        ctx = await b.new_context(viewport={"width": 1280, "height": 760}, record_video_dir=OUT, record_video_size={"width": 1280, "height": 760})
+        page = await ctx.new_page()
         # 6. Duplicate-submit protection
         await login(page, "sara@doubtdesk.demo", "student123", "another student (Sara)")
         await cap(page, "Appendix: double-clicking Submit still creates exactly one doubt.", 3)
@@ -117,7 +133,8 @@ async def main():
         n = await page.locator(".doubt-row", has_text="derivative of ln").count()
         await cap(page, f"Sara's list shows {n} copy of the doubt.", 5)
         await logout(page)
-        await ctx.close(); await b.close()
+        v3 = await page.video.path(); await ctx.close(); await b.close()
+    assemble(v1, v2, v3)
     print("recorded to", OUT)
 
 asyncio.run(main())

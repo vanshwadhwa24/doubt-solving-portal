@@ -15,7 +15,7 @@ function TurnBanner({ doubt, messages, isEducator }) {
   const since = educatorTurn ? waitLabel(last ? last.created_at : doubt.created_at) : null;
   if (isEducator) {
     return educatorTurn
-      ? <div className="turn-banner turn-banner-you">Your turn - the student has been waiting {since}.</div>
+      ? <div className="turn-banner turn-banner-you">Your turn. The student has been waiting {since}.</div>
       : <div className="turn-banner turn-banner-them">Waiting for the student to reply.</div>;
   }
   return educatorTurn
@@ -119,7 +119,6 @@ export function DoubtThread() {
         <TurnBanner doubt={doubt} messages={messages} isEducator={isEducator} />
         {actions && actions.length > 0 && (
           <div className="status-actions">
-            {isEducator && <span className="form-note">Move to</span>}
             {actions.map(([to, label]) => (
               <button key={to} className="btn btn-small btn-ghost" onClick={() => changeStatus(to)}>{label}</button>
             ))}
