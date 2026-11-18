@@ -149,6 +149,18 @@ paths:
       responses:
         '200': {description: Image bytes}
         '404': {description: Not found or not visible to you}
+  /telegram/status:
+    get:
+      summary: Is the Telegram bridge enabled and is this student linked
+      responses:
+        '200': {description: "{enabled, linked}"}
+        '403': {description: Not a student}
+  /telegram/link-code:
+    post:
+      summary: One-time code (15 minutes) the student sends to the bot as /start CODE
+      responses:
+        '201': {description: "{code, expires_in_minutes}"}
+        '409': {description: Telegram is not enabled on this server}
 components:
   schemas:
     User:

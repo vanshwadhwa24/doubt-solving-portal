@@ -34,6 +34,15 @@ Base URL: `/api`. Auth is a session cookie (`dd_session`, httpOnly) issued by lo
 | ------ | ----------------------- | -------------- | ----------- |
 | GET    | `/attachments/:id/file` | owner/educator | Streams the uploaded image with its stored MIME type. |
 
+## Telegram (optional bonus)
+
+| Method | Path                  | Role    | Description |
+| ------ | --------------------- | ------- | ----------- |
+| GET    | `/telegram/status`    | student | `{enabled, linked}`. |
+| POST   | `/telegram/link-code` | student | Returns `{code, expires_in_minutes: 15}` to send to the bot as `/start CODE`. 409 when no bot token is configured. |
+
+The bot itself uses long polling (no inbound endpoint). Bot commands: `/start CODE` (link), `/new <question>` (separate doubt); any other text or photo joins the open conversation.
+
 ## Conventions
 
 - IDs are bigints and serialize as strings in JSON.

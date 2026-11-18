@@ -24,7 +24,7 @@ A centralized portal where students submit academic doubts and educators manage 
 - Thread and student home refresh on their own (10s and 20s)
 
 **Telegram bridge (optional, bonus)**
-- With a bot token set, students can send doubts to a Telegram bot; they appear in the educator inbox and educator answers are pushed back to the chat
+- Students link their Telegram chat to their account with a one-time code, then send text or photos to the bot; follow-ups stay in the same conversation, doubts appear in the educator inbox, and educator replies (text or image) come back to the chat. Setup below
 
 **Engineering**
 - Session-cookie auth with scrypt-hashed passwords and student/educator role-based access control
@@ -74,7 +74,7 @@ npm run dev        # server on :4000, Vite dev server on :5173 (proxied)
 npm test
 ```
 
-Runs the API suite (22 tests) against a separate `doubt_portal_test` database (created from the same migrations; set `DATABASE_URL` to override).
+Runs the API suite (31 tests, including the Telegram flow with a stubbed Bot API) against a separate `doubt_portal_test` database (created from the same migrations; set `DATABASE_URL` to override).
 
 ## E2E smoke test
 
@@ -86,6 +86,15 @@ python3 scripts/e2e-journeys.py    # whose-turn, tabs, mobile, resolved page (fr
 python3 scripts/e2e-queue.py       # work queue and answer reuse (fresh seed)
 python3 scripts/measure-queue.py before|after   # clicks and route changes for the fixed queue task (fresh seed)
 ```
+
+## Telegram bot setup (optional)
+
+1. In Telegram, talk to @BotFather, send `/newbot`, and copy the token. (A test bot is enough; no deployment needed.)
+2. Start the server with the token: `TELEGRAM_BOT_TOKEN=123:abc TELEGRAM_DEFAULT_COURSE=CS301 npm start` (long polling, no public URL needed).
+3. Sign in as a student, press **Connect Telegram** on the home page, and send the shown `/start CODE` to your bot.
+4. Send a question (or a photo with a caption). It appears in the educator inbox. When the educator replies, the answer arrives in the chat. Further messages join the same doubt until it is resolved; `/new <question>` starts a separate one.
+
+Without a token the bot is off and nothing else changes. To test without a real bot: `node scripts/e2e-telegram.mjs` runs the whole loop against a local fake Bot API (needs a seeded database).
 
 ## Demo video
 
@@ -108,7 +117,7 @@ Re-record with `python3 scripts/record-demo.py` against a freshly seeded app (se
 | `MAX_UPLOAD_BYTES` | `5242880`                                          | Image upload cap (5 MB)    |
 | `UPLOAD_DIR`       | `server/uploads`                                   | Attachment storage         |
 | `TELEGRAM_BOT_TOKEN` | _(unset)_                                        | Enables the Telegram bridge when set |
-| `TELEGRAM_STUDENT_EMAIL` | _(first student)_                            | Student identity for Telegram-origin doubts |
+| `TELEGRAM_API_BASE` | `https://api.telegram.org`                    | Override for testing against a fake Bot API |
 | `TELEGRAM_DEFAULT_COURSE` | _(first course)_                            | Course code for Telegram-origin doubts |
 
 ## Documentation

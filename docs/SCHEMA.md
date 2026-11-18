@@ -7,6 +7,7 @@ PostgreSQL. Migrations live in `server/db/migrations/` and are applied by `npm r
 ```mermaid
 erDiagram
     users ||--o{ sessions : owns
+    users ||--o{ telegram_link_codes : requests
     users ||--o{ doubts : asks
     courses ||--o{ doubts : categorizes
     doubts ||--o{ messages : contains
@@ -20,6 +21,7 @@ erDiagram
         text email UK
         text password_hash
         text role "student | educator"
+        bigint telegram_chat_id UK "linked Telegram chat, optional"
         timestamptz created_at
     }
     courses {
@@ -62,6 +64,11 @@ erDiagram
         text mime_type
         int byte_size
     }
+    telegram_link_codes {
+        text code PK "one-time, 15 min"
+        bigint user_id FK
+        timestamptz expires_at
+    }
     telegram_updates {
         bigint update_id PK "processed bot updates, dedupe"
         timestamptz processed_at
@@ -75,4 +82,5 @@ erDiagram
 - **Indexes** on `doubts(status)`, `doubts(course_id)`, `doubts(student_id)` and `messages(doubt_id, created_at)` keep inbox filtering and thread reads cheap as volume grows.
 - **Sessions** store only the SHA-256 hash of the bearer token.
 
+- **Migration 003** adds `users.telegram_chat_id` (unique) and `telegram_link_codes` so each student links their own Telegram chat; a partial index finds a chat's open doubt.
 - **Migration 002** is data-only (no schema change): it sets legacy `answered` doubts whose last message is not from an educator to `in_progress` (or `open` if there are no messages).
