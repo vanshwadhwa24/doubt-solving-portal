@@ -76,18 +76,9 @@ npm test
 
 Runs the API suite (31 tests, including the Telegram flow with a stubbed Bot API) against a separate `doubt_portal_test` database (created from the same migrations; set `DATABASE_URL` to override).
 
-## E2E smoke test
 
-`scripts/e2e-smoke.py` drives a real browser through the whole loop (student submits a doubt with an image, educator searches/answers/sets status, student reads the answer) with assertions at each step. Requires Python + Playwright and a seeded app on :4000:
 
-```bash
-python3 scripts/e2e-smoke.py       # core loop
-python3 scripts/e2e-journeys.py    # whose-turn, tabs, mobile, resolved page (fresh seed)
-python3 scripts/e2e-queue.py       # work queue and answer reuse (fresh seed)
-python3 scripts/measure-queue.py before|after   # clicks and route changes for the fixed queue task (fresh seed)
-```
-
-## Telegram bot setup (optional)
+## Telegram bot setup
 
 1. In Telegram, talk to @BotFather, send `/newbot`, and copy the token. (A test bot is enough; no deployment needed.)
 2. Start the server with the token: `TELEGRAM_BOT_TOKEN=123:abc TELEGRAM_DEFAULT_COURSE=CS301 npm start` (long polling, no public URL needed).
@@ -96,18 +87,6 @@ python3 scripts/measure-queue.py before|after   # clicks and route changes for t
 
 Without a token the bot is off and nothing else changes. To test without a real bot: `node scripts/e2e-telegram.mjs` runs the whole loop against a local fake Bot API (needs a seeded database).
 
-## Demo video
-
-`demo/demo.mp4` is a silent, captioned screen recording (no voiceover), about 6 minutes 30 seconds. It shows:
-1. Intro: the problem and the workflow
-2. Student home (active only), the Resolved page, asking a doubt with code and a screenshot
-3. Educator: Start working with Undo, Work the queue, Skip, similar earlier answer used as an editable draft, Send & next
-4. Student reads the reply, follows up; educator sees it back under Needs reply and answers; student marks it resolved and it leaves the home page
-5. Phone width (390px) for both roles; double-clicking Submit still creates one doubt
-6. Telegram bridge: link code, refusal before linking, doubt created, follow-up joins it, photo, educator reply delivered back. This part runs against a local fake of the Telegram Bot API, not a real bot, and says so on screen
-7. Slides: data model, access control and duplicate handling, tests and 20,000-doubt timings, known limits
-
-Re-record with `python3 scripts/record-demo.py` against a freshly seeded app (see the script header). The Telegram part starts `scripts/fake-telegram.mjs` and a second app instance on :4001 by itself; the full recording takes about 8 minutes.
 
 ## Configuration
 
@@ -126,4 +105,3 @@ Re-record with `python3 scripts/record-demo.py` against a freshly seeded app (se
 
 - `docs/API.md` - REST API reference (+ `docs/openapi.yaml`)
 - `docs/SCHEMA.md` - database schema and ER diagram
-- `docs/ASSUMPTIONS.md` - assumptions, trade-offs and known limitations
